@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deliverypulse.io/schemas/prj-del-live.schema.json",
+  "title": "PrjDelLiveAssessment",
+  "description": "DGRF Operational Project Delivery Risk Assessment Schema for In-Flight Execution (Dimensions O1 - O5)",
+  "type": "object",
+  "required": ["o1_schedule", "o2_acceptance", "o3_capital_efficiency", "o4_team_morale", "o5_reporting_truth"],
+  "properties": {
+    "projectId": {
+      "type": "string",
+      "description": "Unique identifier for the project evaluated"
+    },
+    "sprintOrMilestone": {
+      "type": "string",
+      "description": "Current execution iteration, sprint, or phase milestone"
+    },
+    "assessedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Evaluation timestamp (ISO 8601)"
+    },
+    "o1_schedule": {
+      "type": "integer",
+      "enum": [3, 10, 18, 25],
+      "title": "O1: Schedule Velocity & Milestone Variance",
+      "description": "Critical path slip rate and variance against planned baseline (Max 25 pts). 3: On schedule or tracking ahead (<5% variance, zero critical path slippage). 10: Manageable schedule variance (5-15% slippage, recoverable without baseline change). 18: Critical path delayed by 15-30%, compressed testing phase planned. 25: Uncontrolled critical path delay (>30%), repeated milestone re-baselining."
+    },
+    "o2_acceptance": {
+      "type": "integer",
+      "enum": [3, 8, 14, 20],
+      "title": "O2: Acceptance Testing & Defect Inflow",
+      "description": "User acceptance test pass rates, defect backlog growth, and technical debt accumulation (Max 20 pts). 3: Defect closure rate exceeds inflow; UAT first-time pass rate > 90%. 8: Stable defect burn-down; manageable P2/P3 backlogs with workarounds. 14: Defect backlog increasing; recurring critical (P1) defects blocking acceptance. 20: Severe test failures, release blockers ignored, or testing bypassed to hit dates."
+    },
+    "o3_capital_efficiency": {
+      "type": "integer",
+      "enum": [3, 8, 14, 20],
+      "title": "O3: Capital Efficiency & Cost Variance (CPI/EVM)",
+      "description": "Earned Value Cost Performance Index (CPI) and burn rate sustainability (Max 20 pts). 3: Cost Performance Index (CPI) >= 0.98; expenditure matches delivered value. 8: CPI between 0.90 - 0.97; minor burn acceleration with identified remedy. 14: CPI between 0.75 - 0.89; persistent overspend without proportional value delivered. 20: CPI < 0.75; acute run-rate crisis requiring emergency budget replenishment."
+    },
+    "o4_team_morale": {
+      "type": "integer",
+      "enum": [2, 6, 11, 15],
+      "title": "O4: Team Morale & Key-Person Attrition Risk",
+      "description": "Engineering burnout, psychological safety, and attrition in key architecture/lead roles (Max 15 pts). 2: High team cohesion, sustainable cadence, zero key departures, high psychological safety. 6: Occasional overtime during release crunches; stable core team. 11: Chronic crunch (>55 hrs/wk), elevated cynicism, key leads expressing flight intent. 15: Critical talent departures, toxic blame culture, unmitigated key-person single points of failure."
+    },
+    "o5_reporting_truth": {
+      "type": "integer",
+      "enum": [3, 8, 14, 20],
+      "title": "O5: Reporting Transparency & Status Candor (The Watermelon Effect)",
+      "description": "Truthfulness of executive dashboard status vs engineering ground reality (Max 20 pts). 3: Radical transparency; failures and risks surfaced immediately without reprisal. 8: Balanced reporting; minor negative indicators smoothed but key impediments escalated. 14: Visible 'Watermelon Effect' (Green on exterior dashboards, Red inside engineering teams). 20: Actively manipulated or suppressed metrics, gag orders on bad news, fabricated RAG statuses."
+    }
+  },
+  "additionalProperties": false
+}

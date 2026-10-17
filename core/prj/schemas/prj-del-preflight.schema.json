@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deliverypulse.io/schemas/prj-del-preflight.schema.json",
+  "title": "PrjDelPreflightAssessment",
+  "description": "DGRF Pre-Flight Execution Risk Readiness Schema for Phase 0 / Inception (Dimensions P1 - P5)",
+  "type": "object",
+  "required": ["p1_schedule_estimation", "p2_acceptance_definition", "p3_capital_runway", "p4_team_readiness", "p5_reporting_governance"],
+  "properties": {
+    "projectId": {
+      "type": "string",
+      "description": "Unique identifier for the project evaluated"
+    },
+    "phase": {
+      "type": "string",
+      "default": "Phase 0 / Business Case / Inception"
+    },
+    "assessedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Evaluation timestamp (ISO 8601)"
+    },
+    "p1_schedule_estimation": {
+      "type": "integer",
+      "enum": [3, 10, 18, 25],
+      "title": "P1: Estimation Rigor & Schedule Baseline Feasibility",
+      "description": "Empirical estimation methodology vs arbitrary executive deadline mandate (Max 25 pts). 3: Bottom-up probabilistic estimation (Monte Carlo / Reference Class Forecasting). 10: Parametric estimation with historical organizational benchmarks. 18: Expert consensus with aggressive timeline compression. 25: Fixed arbitrary target date mandated top-down without technical viability review."
+    },
+    "p2_acceptance_definition": {
+      "type": "integer",
+      "enum": [3, 8, 14, 20],
+      "title": "P2: Acceptance Definition & Verification Testability",
+      "description": "Clarity of 'Definition of Done', measurable SLAs, and test harness availability (Max 20 pts). 3: Quantified acceptance criteria signed off with automated test environments ready. 8: Detailed requirements with agreed manual test scenarios. 14: Vague requirement statements; ambiguous business validation mechanisms. 20: No acceptance criteria defined; success criteria entirely undefined."
+    },
+    "p3_capital_runway": {
+      "type": "integer",
+      "enum": [3, 8, 14, 20],
+      "title": "P3: Capital Runway & Budget Adequacy",
+      "description": "Funding certainty, runway through minimum viable release, and contingency reserves (Max 20 pts). 3: Fully committed budget through MVP + 20% dedicated buffer. 8: Budget committed for phase 1; subsequent tranches contingent on gate review. 14: Underfunded baseline relying on future unconfirmed capital allocations. 20: Speculative funding with structural cash shortfall within 60 days."
+    },
+    "p4_team_readiness": {
+      "type": "integer",
+      "enum": [2, 6, 11, 15],
+      "title": "P4: Core Team Capability & Onboarding Readiness",
+      "description": "Technical domain expertise, dedicated staffing ratios, and tooling readiness (Max 15 pts). 2: Dedicated, seasoned core engineering team with proven stack expertise. 6: Adequate internal team with minimal ramp-up curve needed. 11: Heavy reliance on unvetted contractors; key architecture roles unstaffed. 15: Critical skills deficit across architecture, security, and infrastructure."
+    },
+    "p5_reporting_governance": {
+      "type": "integer",
+      "enum": [3, 8, 14, 20],
+      "title": "P5: Operational Metrics Baseline & Instrumentation",
+      "description": "Observability, CI/CD telemetry, and objective progress tracking tooling (Max 20 pts). 3: Automated telemetry, DORA metrics pipeline, and transparent burndown instrumentation. 8: Standard PMO ticketing and milestone tracking tools configured. 14: Manual, retrospective spreadsheet reporting with delayed cadences. 20: No delivery instrumentation; relies solely on subjective narrative updates."
+    }
+  },
+  "additionalProperties": false
+}

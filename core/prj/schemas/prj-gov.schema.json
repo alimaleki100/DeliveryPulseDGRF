@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deliverypulse.io/schemas/prj-gov.schema.json",
+  "title": "PrjGovAssessment",
+  "description": "DGRF Structural Project Governance Risk Assessment Schema (Dimensions D1 - D5)",
+  "type": "object",
+  "required": ["d1_authority", "d2_procurement", "d3_scope_ccb", "d4_risk_contingency", "d5_architecture_coupling"],
+  "properties": {
+    "projectId": {
+      "type": "string",
+      "description": "Unique identifier for the project evaluated"
+    },
+    "projectName": {
+      "type": "string",
+      "description": "Human-readable enterprise project name"
+    },
+    "assessor": {
+      "type": "string",
+      "description": "Name or email of the executive/governance assessor"
+    },
+    "assessedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Evaluation timestamp (ISO 8601)"
+    },
+    "d1_authority": {
+      "type": "integer",
+      "enum": [3, 10, 18, 25],
+      "title": "D1: Decision-Making Authority & Sponsorship",
+      "description": "Calibration of single-threaded executive ownership vs diffuse steering committees (Max 25 pts). 3: Single accountable executive with unilateral mandate. 10: Clear steering sponsor with bounded delegation. 18: Fragmented multi-stakeholder consensus required. 25: Unclear ownership, paralyzed decision-rights or absentee sponsor."
+    },
+    "d2_procurement": {
+      "type": "integer",
+      "enum": [3, 9, 15, 20],
+      "title": "D2: Procurement Alignment & Vendor Contracting",
+      "description": "Incentive alignment, fixed-price vs agile risk sharing, vendor accountability (Max 20 pts). 3: Outcome-linked milestones with shared risk-reward. 9: Time & Materials with strong performance gates. 15: Rigid fixed-price waterfall contract with adversarial terms. 20: Cost-plus without penalty or misaligned offshore vendor lock-in."
+    },
+    "d3_scope_ccb": {
+      "type": "integer",
+      "enum": [3, 9, 15, 20],
+      "title": "D3: Scope Control & Change Control Board (CCB)",
+      "description": "Discipline of scope intake, threshold variance control, and architectural integrity (Max 20 pts). 3: Rigorous CCB with trade-off mandate (scope drop required for new additions). 9: Formal CCB with cost/schedule impact analysis. 15: Permissive CCB with frequent emergency exemptions. 20: Uncontrolled scope creep with direct executive backdoor additions."
+    },
+    "d4_risk_contingency": {
+      "type": "integer",
+      "enum": [3, 8, 14, 20],
+      "title": "D4: Risk Contingency & Reserves Allocation",
+      "description": "Adequacy of unallocated financial & schedule buffers under sponsor control (Max 20 pts). 3: Actuarially validated contingency (>=20%) controlled by project lead. 8: Standard management reserve (10-15%) with clear drawdown protocol. 14: Minimal contingency (<5%) absorbed into baseline immediately. 20: Zero contingency reserve or artificial buffer shaving by finance."
+    },
+    "d5_architecture_coupling": {
+      "type": "integer",
+      "enum": [2, 7, 11, 15],
+      "title": "D5: Architectural Coupling & Technical Debt Governance",
+      "description": "Governance over architectural dependency, legacy entanglement, and non-functional sign-off (Max 15 pts). 2: Loosely coupled microservices/modular monolith with clean API contracts. 7: Bounded monolith with documented integration boundaries. 11: High coupling to legacy core systems with synchronous dependencies. 15: Undocumented spaghetti entanglement with zero regression automation."
+    }
+  },
+  "additionalProperties": false
+}
