@@ -1,0 +1,41 @@
+{
+  "id": "case-c-modular-enterprise-solution",
+  "name": "Case C: Modular Enterprise Solution",
+  "phase": "Active Execution",
+  "reference": "PM World Journal (PMWJ), October 2026, Section 8",
+  "inputs": {
+    "gov": {
+      "d1": 18,
+      "d2": 9,
+      "d3": 15,
+      "d4": 14,
+      "d5": 2
+    },
+    "del": {
+      "o1": 3,
+      "o2": 8,
+      "o3": 3,
+      "o4": 6,
+      "o5": 8
+    }
+  },
+  "expectedResults": {
+    "baseGov": 58,
+    "penaltyGov": 0,
+    "finalGov": 58,
+    "baseDel": 28,
+    "penaltyDel": 0,
+    "finalDel": 28,
+    "quadrant": "Q2",
+    "quadrantName": "Fragile Governance",
+    "inBufferZone": true,
+    "assumedTrajectory": "Shipped on schedule due to decoupled architectural insulation (D5 = 2).",
+    "sensitivityCheck": {
+      "modifiedD1": 10,
+      "newFinalGov": 50,
+      "newQuadrant": "Q3",
+      "newQuadrantName": "Resilient Conditions",
+      "insight": "Shifting D1 from 18 to 10 reduces PrjGov to 50, transitioning project to Q3 (Resilient Conditions)."
+    }
+  }
+}

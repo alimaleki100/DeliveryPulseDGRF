@@ -1,0 +1,34 @@
+{
+  "id": "case-b-commercial-software",
+  "name": "Case B: Commercial Off-The-Shelf Replacement",
+  "phase": "Active Execution (Month 6)",
+  "reference": "PM World Journal (PMWJ), October 2026, Section 8",
+  "inputs": {
+    "gov": {
+      "d1": 25,
+      "d2": 20,
+      "d3": 20,
+      "d4": 20,
+      "d5": 15
+    },
+    "del": {
+      "o1": 10,
+      "o2": 14,
+      "o3": 14,
+      "o4": 6,
+      "o5": 20
+    }
+  },
+  "expectedResults": {
+    "baseGov": 100,
+    "penaltyGov": 10,
+    "finalGov": 100,
+    "baseDel": 64,
+    "penaltyDel": 0,
+    "finalDel": 64,
+    "quadrant": "Q1",
+    "quadrantName": "Systemic Fragility",
+    "inBufferZone": false,
+    "assumedTrajectory": "Cancelled within 30 days (catastrophic cliff)."
+  }
+}

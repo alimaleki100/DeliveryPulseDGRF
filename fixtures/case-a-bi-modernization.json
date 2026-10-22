@@ -1,0 +1,34 @@
+{
+  "id": "case-a-bi-modernization",
+  "name": "Case A: Business Intelligence Modernization",
+  "phase": "Active Execution (Month 6)",
+  "reference": "PM World Journal (PMWJ), October 2026, Section 8",
+  "inputs": {
+    "gov": {
+      "d1": 10,
+      "d2": 20,
+      "d3": 20,
+      "d4": 14,
+      "d5": 15
+    },
+    "del": {
+      "o1": 18,
+      "o2": 20,
+      "o3": 20,
+      "o4": 6,
+      "o5": 14
+    }
+  },
+  "expectedResults": {
+    "baseGov": 79,
+    "penaltyGov": 0,
+    "finalGov": 79,
+    "baseDel": 78,
+    "penaltyDel": 0,
+    "finalDel": 78,
+    "quadrant": "Q1",
+    "quadrantName": "Systemic Fragility",
+    "inBufferZone": false,
+    "assumedTrajectory": "Cancelled after protracted decay."
+  }
+}

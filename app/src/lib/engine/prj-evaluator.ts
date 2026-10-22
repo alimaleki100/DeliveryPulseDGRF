@@ -1,7 +1,8 @@
 /**
  * Delivery & Governance Risk Framework (DGRF) Mathematical Scoring Engine
- * Based on "Diagnosing Project Delivery Risk: A Governance and Execution Framework for Enterprise IT"
- * Author: Ali Maleki
+ * Based on "Diagnosing Project Delivery Risk: A Two-Axis Governance Framework"
+ * Published in PM World Journal (PMWJ), October 2026
+ * Author: Ali Maleki (MBA, PMP) — Brno, Czech Republic
  */
 
 // --- 1. Type Definitions for Anchors ---
@@ -24,28 +25,30 @@ export type P3Anchor = 3 | 8 | 14 | 20;
 export type P4Anchor = 2 | 6 | 11 | 15;
 export type P5Anchor = 3 | 8 | 14 | 20;
 
+export type ProjectPhase = 'phase_zero' | 'active_execution' | 'cutover_stabilization';
+
 export interface PrjGovInputs {
-  d1: D1Anchor; // Authority (Max 25)
-  d2: D2Anchor; // Procurement (Max 20)
-  d3: D3Anchor; // Scope CCB (Max 20)
-  d4: D4Anchor; // Risk Contingency (Max 20)
-  d5: D5Anchor; // Architecture Coupling (Max 15)
+  d1: D1Anchor; // Decision Authority & Executive Mandate (Max 25)
+  d2: D2Anchor; // Procurement Architecture & Vendor Risk Allocation (Max 20)
+  d3: D3Anchor; // Scope Governance & Baseline Integrity (Max 20)
+  d4: D4Anchor; // Risk Management & Contingency Governance (Max 20)
+  d5: D5Anchor; // Architectural Complexity & Dependency Drag (Max 15)
 }
 
 export interface PrjDelInputs {
-  o1: O1Anchor; // Schedule (Max 25)
-  o2: O2Anchor; // Acceptance (Max 20)
-  o3: O3Anchor; // Capital Efficiency (Max 20)
-  o4: O4Anchor; // Team Morale (Max 15)
-  o5: O5Anchor; // Reporting Truth (Max 20)
+  o1: O1Anchor; // Schedule Integrity & Milestone Drift (Max 25)
+  o2: O2Anchor; // Product Acceptance & Defect Friction (Max 20)
+  o3: O3Anchor; // Capital Efficiency & Burn-to-Value (Max 20)
+  o4: O4Anchor; // Team Sustainability & Key-Person Exposure (Max 15)
+  o5: O5Anchor; // Reporting Integrity & Bad-News Visibility (Max 20)
 }
 
 export interface PrjPreFlightInputs {
-  p1: P1Anchor; // Estimation Rigor (Max 25)
-  p2: P2Anchor; // Acceptance Definition (Max 20)
-  p3: P3Anchor; // Capital Runway (Max 20)
-  p4: P4Anchor; // Core Team Readiness (Max 15)
-  p5: P5Anchor; // Observability Baseline (Max 20)
+  p1: P1Anchor; // Deadline Realism (Max 25)
+  p2: P2Anchor; // Requirement Maturity (Max 20)
+  p3: P3Anchor; // Budget Fidelity (Max 20)
+  p4: P4Anchor; // Dedicated Resource Commitment (Max 15)
+  p5: P5Anchor; // Definition of Done Alignment (Max 20)
 }
 
 export type QuadrantId = 'Q1' | 'Q2' | 'Q3' | 'Q4';
@@ -95,10 +98,13 @@ export interface EvaluationResult {
     delInBuffer: boolean;
     explanation: string;
   };
+  phase?: ProjectPhase;
+  phaseMultiplier?: number;
+  scenarioGovScore?: number;
   calculatedAt: string;
 }
 
-// --- 2. Descriptive Metadata for Interactive UI ---
+// --- 2. Descriptive Metadata for Interactive UI (PMWJ Titles) ---
 
 export interface AnchorOption<T extends number> {
   value: T;
@@ -126,39 +132,39 @@ export const PRJ_GOV_META: {
 } = {
   d1: {
     code: 'D1',
-    title: 'Decision-Making Authority & Sponsorship',
+    title: 'Decision Authority & Executive Mandate',
     category: 'Structural Governance',
     maxPoints: 25,
     weightLabel: '25 pts',
-    description: 'Measures executive alignment, unilateral mandate, and escalation velocity.',
+    description: 'Calibration of single-threaded executive ownership vs diffuse steering committees.',
     options: [
       { value: 3, level: 1, label: 'Single Accountable Owner', description: 'Single executive sponsor with unilateral decision mandate and direct budget discretion.' },
       { value: 10, level: 2, label: 'Structured Delegation', description: 'Clear steering sponsor with structured escalation protocols and bounded delegation.' },
       { value: 18, level: 3, label: 'Diffuse Consensus', description: 'Multi-stakeholder committee requiring consensus; cross-functional stalemates common.' },
-      { value: 25, level: 4, label: 'Absentee / Paralyzed Ownership', description: 'Paralyzed decision rights, absentee sponsor, or active political infighting across C-suite.' },
+      { value: 25, level: 4, label: 'Absentee / Paralyzed Mandate', description: 'Paralyzed decision rights, absentee sponsor, or active political infighting across C-suite.' },
     ],
   },
   d2: {
     code: 'D2',
-    title: 'Procurement Alignment & Vendor Contracting',
+    title: 'Procurement Architecture & Vendor Risk Allocation',
     category: 'Structural Governance',
     maxPoints: 20,
     weightLabel: '20 pts',
-    description: 'Incentive compatibility between enterprise principal and delivery partner/vendor.',
+    description: 'Incentive compatibility between enterprise principal and delivery partner/vendor (Eisenhardt, 1989).',
     options: [
       { value: 3, level: 1, label: 'Outcome-Aligned / Shared Risk', description: 'Shared risk-reward commercial terms tied directly to business milestone outcomes.' },
-      { value: 9, level: 2, label: 'Time & Materials with Quality Gates', description: 'Capped T&M with rigorous sprint-level quality and velocity acceptance criteria.' },
+      { value: 9, level: 2, label: 'Capped T&M with Quality Gates', description: 'Time & Materials with Guaranteed Maximum Price and rigorous sprint acceptance criteria.' },
       { value: 15, level: 3, label: 'Adversarial Fixed-Price', description: 'Rigid fixed-price contract with zero flexibility; heavy change-order penalty friction.' },
       { value: 20, level: 4, label: 'Predatory / Unaligned Cost-Plus', description: 'Predatory vendor lock-in or unaligned cost-plus structure with zero penalty for slippage.' },
     ],
   },
   d3: {
     code: 'D3',
-    title: 'Scope Control & Change Control Board (CCB)',
+    title: 'Scope Governance & Baseline Integrity',
     category: 'Structural Governance',
     maxPoints: 20,
     weightLabel: '20 pts',
-    description: 'Discipline in protecting the core baseline and evaluating trade-offs.',
+    description: 'Discipline in protecting the core baseline and enforcing zero-sum scope trade-offs.',
     options: [
       { value: 3, level: 1, label: 'Zero-Sum Trade-off Discipline', description: 'Rigorous CCB; every scope addition mandates dropping equivalent baseline complexity.' },
       { value: 9, level: 2, label: 'Formal Impact Verification', description: 'Empirical impact analysis before any scope approval; scheduled baseline reviews.' },
@@ -168,11 +174,11 @@ export const PRJ_GOV_META: {
   },
   d4: {
     code: 'D4',
-    title: 'Risk Contingency & Reserves Allocation',
+    title: 'Risk Management & Contingency Governance',
     category: 'Structural Governance',
     maxPoints: 20,
     weightLabel: '20 pts',
-    description: 'Adequacy and control of unallocated schedule and capital buffers.',
+    description: 'Adequacy and ring-fenced control of unallocated schedule and capital reserves.',
     options: [
       { value: 3, level: 1, label: 'Ring-Fenced Buffer (>= 20%)', description: 'Actuarially validated contingency (>=20%) controlled solely by the delivery leadership.' },
       { value: 8, level: 2, label: 'Standard Reserve (10-15%)', description: 'Standard 10-15% reserve with clear governance drawdown protocol.' },
@@ -182,11 +188,11 @@ export const PRJ_GOV_META: {
   },
   d5: {
     code: 'D5',
-    title: 'Architectural Coupling & Technical Governance',
+    title: 'Architectural Complexity & Dependency Drag',
     category: 'Structural Governance',
     maxPoints: 15,
     weightLabel: '15 pts',
-    description: 'Autonomy of system boundaries vs legacy blast-radius entanglement.',
+    description: 'Autonomy of system boundaries vs legacy blast-radius entanglement (Conway, 1968).',
     options: [
       { value: 2, level: 1, label: 'Decoupled / Independent Deployability', description: 'Modular architecture with contract-tested APIs and automated backward compatibility.' },
       { value: 7, level: 2, label: 'Bounded Monolith', description: 'Well-defined bounded context with documented integration points.' },
@@ -205,25 +211,25 @@ export const PRJ_DEL_META: {
 } = {
   o1: {
     code: 'O1',
-    title: 'Schedule Velocity & Critical Path Variance',
+    title: 'Schedule Integrity & Milestone Drift',
     category: 'Operational Delivery',
     maxPoints: 25,
     weightLabel: '25 pts',
-    description: 'Milestone tracking and critical path divergence from target baseline.',
+    description: 'Critical path schedule variance and milestone slippage rate (EVM SV / SPI).',
     options: [
-      { value: 3, level: 1, label: 'Ahead / On Schedule (< 5% Var)', description: 'Tracking on or ahead of critical path schedule with zero baseline drift.' },
-      { value: 10, level: 2, label: 'Minor Slippage (5-15% Var)', description: 'Manageable schedule variance absorbable within normal sprint tolerances.' },
-      { value: 18, level: 3, label: 'Substantial Delay (15-30% Var)', description: 'Critical path delayed 15-30%; testing window compressed to preserve dates.' },
-      { value: 25, level: 4, label: 'Severe Breakdown (> 30% Var)', description: 'Critical path blown by >30%; multiple cosmetic re-baselines masking delivery stall.' },
+      { value: 3, level: 1, label: 'Ahead / On Schedule (< 5% Var)', description: 'Tracking on or ahead of critical path schedule with zero baseline drift (SPI >= 0.98).' },
+      { value: 10, level: 2, label: 'Minor Slippage (5-15% Var)', description: 'Manageable schedule variance absorbable within normal sprint tolerances (SPI 0.90-0.97).' },
+      { value: 18, level: 3, label: 'Substantial Delay (15-30% Var)', description: 'Critical path delayed 15-30%; testing window compressed to preserve dates (SPI 0.75-0.89).' },
+      { value: 25, level: 4, label: 'Severe Breakdown (> 30% Var)', description: 'Critical path blown by >30%; multiple cosmetic re-baselines masking delivery stall (SPI < 0.75).' },
     ],
   },
   o2: {
     code: 'O2',
-    title: 'Acceptance Testing & Defect Inflow',
+    title: 'Product Acceptance & Defect Friction',
     category: 'Operational Delivery',
     maxPoints: 20,
     weightLabel: '20 pts',
-    description: 'Defect arrival vs burn-down, UAT pass rate, and technical debt build-up.',
+    description: 'Defect arrival vs burn-down curve, UAT pass rate, and technical debt accumulation.',
     options: [
       { value: 3, level: 1, label: 'Defect Burn-down Exceeds Inflow', description: 'Automated test pass rate >95%; zero P1 release blockers; defect burn-down healthy.' },
       { value: 8, level: 2, label: 'Stable Defect Equilibrium', description: 'Manageable P2/P3 backlog with reliable workarounds; stable release cadence.' },
@@ -233,7 +239,7 @@ export const PRJ_DEL_META: {
   },
   o3: {
     code: 'O3',
-    title: 'Capital Efficiency & Cost Variance (CPI)',
+    title: 'Capital Efficiency & Burn-to-Value',
     category: 'Operational Delivery',
     maxPoints: 20,
     weightLabel: '20 pts',
@@ -247,11 +253,11 @@ export const PRJ_DEL_META: {
   },
   o4: {
     code: 'O4',
-    title: 'Team Morale & Cognitive Load',
+    title: 'Team Sustainability & Key-Person Exposure',
     category: 'Operational Delivery',
     maxPoints: 15,
     weightLabel: '15 pts',
-    description: 'Engineering psychological safety, overtime hours, and flight intent.',
+    description: 'Engineering psychological safety (Edmondson, 2018), overtime hours, and flight intent.',
     options: [
       { value: 2, level: 1, label: 'High Cohesion & Psychological Safety', description: 'Sustainable 40hr cadence, high trust, zero voluntary turnover of lead personnel.' },
       { value: 6, level: 2, label: 'Periodic Crunch / Stable Core', description: 'Occasional release crunch; core engineering leadership stable and engaged.' },
@@ -261,11 +267,11 @@ export const PRJ_DEL_META: {
   },
   o5: {
     code: 'O5',
-    title: 'Reporting Truth & "Watermelon Effect"',
+    title: 'Reporting Integrity & Bad-News Visibility',
     category: 'Operational Delivery',
     maxPoints: 20,
     weightLabel: '20 pts',
-    description: 'Transparency of executive dashboard metrics vs engineering reality.',
+    description: 'Executive dashboard status candor vs engineering ground reality (Mum Effect).',
     options: [
       { value: 3, level: 1, label: 'Radical Candor & Transparency', description: 'Unfiltered ground truth; defects and blockers surfaced immediately without fear.' },
       { value: 8, level: 2, label: 'Balanced Status Reporting', description: 'Minor administrative smoothing, but all core technical risks honestly escalated.' },
@@ -275,13 +281,13 @@ export const PRJ_DEL_META: {
   },
 };
 
-// --- 3. Quadrant Diagnostic Definitions ---
+// --- 3. Quadrant Diagnostic Definitions (PMWJ Taxonomy) ---
 
 export const QUADRANT_DEFINITIONS: Record<QuadrantId, QuadrantDefinition> = {
   Q1: {
     id: 'Q1',
     name: 'Systemic Fragility',
-    tagline: 'High Governance Risk (>=50) & High Delivery Risk (>=50)',
+    tagline: 'High Governance Risk (>50) & High Delivery Risk (>50)',
     clinicalSummary:
       'Catastrophic multi-vector breakdown. The initiative suffers simultaneously from fractured executive governance and failing delivery execution. Capital expenditure is disconnected from delivered business capability.',
     recommendedAction:
@@ -293,7 +299,7 @@ export const QUADRANT_DEFINITIONS: Record<QuadrantId, QuadrantDefinition> = {
   Q2: {
     id: 'Q2',
     name: 'Fragile Governance',
-    tagline: 'High Governance Risk (>=50) & Low Delivery Risk (<50)',
+    tagline: 'High Governance Risk (>50) & Low Delivery Risk (<=50)',
     clinicalSummary:
       'The "Heroic Engineers on a Sinking Ship" archetype. Delivery engineering is executing diligently and meeting technical milestones, but the structural foundations (contracts, sponsorship, scope control) are dysfunctional.',
     recommendedAction:
@@ -305,7 +311,7 @@ export const QUADRANT_DEFINITIONS: Record<QuadrantId, QuadrantDefinition> = {
   Q3: {
     id: 'Q3',
     name: 'Resilient Conditions',
-    tagline: 'Low Governance Risk (<50) & Low Delivery Risk (<50)',
+    tagline: 'Low Governance Risk (<=50) & Low Delivery Risk (<=50)',
     clinicalSummary:
       'Target enterprise operating benchmark. Clear executive mandate, aligned vendor procurement, disciplined scope control, high engineering morale, and transparent reporting metrics.',
     recommendedAction:
@@ -317,7 +323,7 @@ export const QUADRANT_DEFINITIONS: Record<QuadrantId, QuadrantDefinition> = {
   Q4: {
     id: 'Q4',
     name: 'Execution Constraint',
-    tagline: 'Low Governance Risk (<50) & High Delivery Risk (>=50)',
+    tagline: 'Low Governance Risk (<=50) & High Delivery Risk (>50)',
     clinicalSummary:
       'The "Sound Ship, Struggling Crew" archetype. Governance is clear, funding is secured, and sponsorship is committed, but ground execution is stalled by technical debt, skill shortages, or testing bottlenecks.',
     recommendedAction:
@@ -328,57 +334,87 @@ export const QUADRANT_DEFINITIONS: Record<QuadrantId, QuadrantDefinition> = {
   },
 };
 
-// --- 4. Preset Scenarios for Rapid Executive Simulation ---
+// --- 4. Preset Scenarios (Section 8 Benchmark Cases from Published PMWJ Manuscript) ---
 
 export interface PresetScenario {
   id: string;
   name: string;
+  phase: string;
   subtitle: string;
   expectedQuadrant: QuadrantId;
+  expectedGov: number;
+  expectedDel: number;
+  inBufferZone: boolean;
+  trajectory: string;
   gov: PrjGovInputs;
   del: PrjDelInputs;
 }
 
 export const PRESET_SCENARIOS: PresetScenario[] = [
   {
-    id: 'legacy-core',
-    name: 'Legacy Core Modernization',
-    subtitle: 'High-stakes banking overhaul with diffuse committee & adversarial vendor',
+    id: 'case-a-bi-modernization',
+    name: 'Case A: Business Intelligence Modernization',
+    phase: 'Active Execution (Month 6)',
+    subtitle: 'Section 8 Case A — Protracted decay and diffuse vendor misalignment',
     expectedQuadrant: 'Q1',
-    gov: { d1: 25, d2: 15, d3: 15, d4: 14, d5: 11 }, // Raw: 80 + 10 penalty = 90
-    del: { o1: 25, o2: 14, o3: 14, o4: 11, o5: 14 }, // Raw: 78 + 10 penalty = 88
+    expectedGov: 79,
+    expectedDel: 78,
+    inBufferZone: false,
+    trajectory: 'Cancelled after protracted decay.',
+    gov: { d1: 10, d2: 20, d3: 20, d4: 14, d5: 15 }, // Raw: 10+20+20+14+15 = 79. Penalty: 0. Total: 79
+    del: { o1: 18, o2: 20, o3: 20, o4: 6, o5: 14 },  // Raw: 18+20+20+6+14 = 78. Penalty: 0. Total: 78
   },
   {
-    id: 'heroic-ship',
-    name: 'Heroic Engineers on a Sinking Ship',
-    subtitle: 'Exceptional engineering talent battling toxic politics and scope creep',
+    id: 'case-b-commercial-software',
+    name: 'Case B: Commercial Off-The-Shelf Replacement',
+    phase: 'Active Execution (Month 6)',
+    subtitle: 'Section 8 Case B — Paralyzed sponsor + vendor lock-in triggers +10 penalty',
+    expectedQuadrant: 'Q1',
+    expectedGov: 100,
+    expectedDel: 64,
+    inBufferZone: false,
+    trajectory: 'Cancelled within 30 days (catastrophic cliff).',
+    gov: { d1: 25, d2: 20, d3: 20, d4: 20, d5: 15 }, // Raw: 25+20+20+20+15 = 100. Penalty: 10. Capped Total: 100
+    del: { o1: 10, o2: 14, o3: 14, o4: 6, o5: 20 },  // Raw: 10+14+14+6+20 = 64. Penalty: 0. Total: 64
+  },
+  {
+    id: 'case-c-modular-enterprise-solution',
+    name: 'Case C: Modular Enterprise Architecture',
+    phase: 'Active Execution',
+    subtitle: 'Section 8 Case C — High governance drag insulated by modular architecture (D5=2)',
     expectedQuadrant: 'Q2',
-    gov: { d1: 25, d2: 15, d3: 20, d4: 14, d5: 11 }, // High Gov (85+)
-    del: { o1: 3, o2: 8, o3: 8, o4: 11, o5: 8 },      // Low Del (<40)
+    expectedGov: 58,
+    expectedDel: 28,
+    inBufferZone: true,
+    trajectory: 'Shipped on schedule due to decoupled architectural insulation (D5 = 2).',
+    gov: { d1: 18, d2: 9, d3: 15, d4: 14, d5: 2 },   // Raw: 18+9+15+14+2 = 58. Penalty: 0. Total: 58 (Buffer Zone)
+    del: { o1: 3, o2: 8, o3: 3, o4: 6, o5: 8 },      // Raw: 3+8+3+6+8 = 28. Penalty: 0. Total: 28
+  },
+  {
+    id: 'case-c-sensitivity-optimized',
+    name: 'Case C Sensitivity: Optimized Mandate',
+    phase: 'Active Execution (Post-Intervention)',
+    subtitle: 'Section 8 Sensitivity — Shifting D1 from 18 to 10 transitions project into Q3',
+    expectedQuadrant: 'Q3',
+    expectedGov: 50,
+    expectedDel: 28,
+    inBufferZone: true,
+    trajectory: 'Transitioned to Q3 Resilient Conditions through single-threaded sponsorship.',
+    gov: { d1: 10, d2: 9, d3: 15, d4: 14, d5: 2 },   // Raw: 10+9+15+14+2 = 50. Penalty: 0. Total: 50 (Q3 boundary)
+    del: { o1: 3, o2: 8, o3: 3, o4: 6, o5: 8 },      // Raw: 28. Total: 28
   },
   {
     id: 'resilient-benchmark',
-    name: 'Cloud-Native Value Stream',
-    subtitle: 'Single-threaded executive sponsor, outcome contracts & automated CI/CD',
+    name: 'Cloud-Native Value Stream Benchmark',
+    phase: 'Active Execution',
+    subtitle: 'Target Benchmark — Aligned outcome contracting & autonomous microservices',
     expectedQuadrant: 'Q3',
-    gov: { d1: 3, d2: 3, d3: 3, d4: 3, d5: 2 },       // Optimal Gov (14)
-    del: { o1: 3, o2: 3, o3: 3, o4: 2, o5: 3 },       // Optimal Del (14)
-  },
-  {
-    id: 'execution-drag',
-    name: 'Well-Funded Technical Debt Trap',
-    subtitle: 'Supportive board and solid budget, but paralyzed by monolithic legacy debt',
-    expectedQuadrant: 'Q4',
-    gov: { d1: 3, d2: 9, d3: 9, d4: 8, d5: 7 },       // Low Gov (36)
-    del: { o1: 25, o2: 14, o3: 14, o4: 11, o5: 8 },   // High Del (72 + 10 = 82)
-  },
-  {
-    id: 'metastable-buffer',
-    name: 'Metastable Tipping Point (Buffer Zone)',
-    subtitle: 'Initiative teetering on the 40-60 transition threshold requiring intervention',
-    expectedQuadrant: 'Q1',
-    gov: { d1: 10, d2: 9, d3: 9, d4: 14, d5: 7 },     // Gov: 49 (Buffer Zone)
-    del: { o1: 10, o2: 14, o3: 8, o4: 11, o5: 8 },    // Del: 51 (Buffer Zone)
+    expectedGov: 14,
+    expectedDel: 14,
+    inBufferZone: false,
+    trajectory: 'Exemplary continuous value delivery with minimal risk.',
+    gov: { d1: 3, d2: 3, d3: 3, d4: 3, d5: 2 },       // Optimal Gov: 14
+    del: { o1: 3, o2: 3, o3: 3, o4: 2, o5: 3 },       // Optimal Del: 14
   },
 ];
 
@@ -447,30 +483,37 @@ export function evaluatePrjPreFlight(inputs: PrjPreFlightInputs): {
   };
 }
 
+/**
+ * Quadrant Assignment Logic based on published PMWJ formulation:
+ * Threshold theta = 50 on penalty-adjusted scores:
+ * - Q1: PrjGov > 50 AND PrjDel > 50 (Systemic Fragility)
+ * - Q2: PrjGov > 50 AND PrjDel <= 50 (Fragile Governance)
+ * - Q3: PrjGov <= 50 AND PrjDel <= 50 (Resilient Conditions)
+ * - Q4: PrjGov <= 50 AND PrjDel > 50 (Execution Constraint)
+ */
 export function determineQuadrant(scoreGov: number, scoreDel: number): QuadrantDefinition {
-  // Threshold = 50
-  // Q1: Gov >= 50 && Del >= 50 (Systemic Fragility)
-  // Q2: Gov >= 50 && Del < 50 (Fragile Governance)
-  // Q3: Gov < 50 && Del < 50 (Resilient Conditions)
-  // Q4: Gov < 50 && Del >= 50 (Execution Constraint)
-  if (scoreGov >= 50 && scoreDel >= 50) {
+  if (scoreGov > 50 && scoreDel > 50) {
     return QUADRANT_DEFINITIONS.Q1;
   }
-  if (scoreGov >= 50 && scoreDel < 50) {
+  if (scoreGov > 50 && scoreDel <= 50) {
     return QUADRANT_DEFINITIONS.Q2;
   }
-  if (scoreGov < 50 && scoreDel < 50) {
+  if (scoreGov <= 50 && scoreDel <= 50) {
     return QUADRANT_DEFINITIONS.Q3;
   }
   return QUADRANT_DEFINITIONS.Q4;
 }
 
 export function isInBufferZone(scoreGov: number, scoreDel: number): boolean {
-  // Flag inBufferZone = true if either score falls in [40, 60]
+  // Flag inBufferZone = true if either score falls in [40, 60] inclusive
   return (scoreGov >= 40 && scoreGov <= 60) || (scoreDel >= 40 && scoreDel <= 60);
 }
 
-export function calculateDGRF(govInputs: PrjGovInputs, delInputs: PrjDelInputs): EvaluationResult {
+export function calculateDGRF(
+  govInputs: PrjGovInputs,
+  delInputs: PrjDelInputs,
+  phase: ProjectPhase = 'active_execution'
+): EvaluationResult {
   const govResult = evaluatePrjGov(govInputs);
   const delResult = evaluatePrjDel(delInputs);
 
@@ -491,6 +534,16 @@ export function calculateDGRF(govInputs: PrjGovInputs, delInputs: PrjDelInputs):
   }
 
   const quadrant = determineQuadrant(govScore, delScore);
+
+  // Phase Multipliers (Sensitivity Scenario Modeling only)
+  // Phase 0: 0.75, Active: 1.00, Cutover: 1.20
+  const phaseMultipliers: Record<ProjectPhase, number> = {
+    phase_zero: 0.75,
+    active_execution: 1.00,
+    cutover_stabilization: 1.20,
+  };
+  const multiplier = phaseMultipliers[phase] ?? 1.0;
+  const scenarioGovScore = Math.min(100, Math.round(govScore * multiplier));
 
   return {
     gov: {
@@ -514,6 +567,9 @@ export function calculateDGRF(govInputs: PrjGovInputs, delInputs: PrjDelInputs):
       delInBuffer,
       explanation: bufferExplanation,
     },
+    phase,
+    phaseMultiplier: multiplier,
+    scenarioGovScore,
     calculatedAt: new Date().toISOString(),
   };
 }
