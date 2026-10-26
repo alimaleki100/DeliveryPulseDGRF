@@ -1,10 +1,537 @@
 /**
- * Google Gemini SDK Client & Executive Clinical Brief Generator
- * Powered by Gemini Flash
+ * Tri-Agent Risk Advisory Squad & Gemini Flash Client
+ * 
+ * Powered by Google Gemini 2.5 Flash with Deterministic Enterprise Fallback.
+ * 
+ * Agents:
+ * 1. Agent 1: Triage Lead (Identifies root cause failure vectors and active governance traps)
+ * 2. Agent 2: Actuary (Analyzes capital burn velocity, contractual misalignment, and penalty triggers)
+ * 3. Agent 3: Recovery Architect (Provides a prioritized 30-60-90 day intervention blueprint and 72-hour reset mandate)
  */
 
-import { EvaluationResult } from './engine/prj-evaluator';
+import { CockpitEvaluation } from './engine/cockpit-engine';
 
+export interface TriAgentOutput {
+  triageLead: {
+    agentTitle: string;
+    headline: string;
+    diagnosticSummary: string;
+    rootCauseVectors: {
+      vectorNumber: number;
+      title: string;
+      severity: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+      mechanics: string;
+    }[];
+    activeGovernanceTraps: string[];
+  };
+  actuary: {
+    agentTitle: string;
+    headline: string;
+    capitalBurnVelocity: string;
+    contractualMisalignment: string;
+    penaltyTriggerAnalysis: string;
+    actuarialLossExposure: string;
+    financialRiskRating: 'SEVERE DEFICIT' | 'UNCHECKED EROSION' | 'STABLE EQUILIBRIUM' | 'MODERATE DRAG';
+    metricsSummary: {
+      govScore: number;
+      delScore: number;
+      penaltyApplied: number;
+      quadrantId: string;
+    };
+  };
+  recoveryArchitect: {
+    agentTitle: string;
+    headline: string;
+    seventyTwoHourMandate: {
+      action: string;
+      rationale: string;
+      deliverable: string;
+    };
+    interventionBlueprint: {
+      thirtyDay: string[];
+      sixtyDay: string[];
+      ninetyDay: string[];
+    };
+    exitCriteria: string;
+  };
+  metadata: {
+    projectName: string;
+    generatedAt: string;
+    source: 'gemini-2.5-flash' | 'deterministic-tri-agent-fallback';
+    authorCredit: string;
+  };
+}
+
+export async function generateTriAgentBrief(
+  evaluation: CockpitEvaluation,
+  projectContext?: { name?: string; industry?: string; budget?: string }
+): Promise<TriAgentOutput> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const projectName = projectContext?.name || 'Enterprise Program';
+
+  if (!apiKey) {
+    return generateDeterministicTriAgentFallback(evaluation, projectContext);
+  }
+
+  const prompt = `
+You are the Lead Coordinator of the DGRF Tri-Agent Risk Advisory Squad, presenting an executive clinical brief to the Board of Directors, CIO, and Audit Committee.
+
+PROJECT CONTEXT:
+Name: ${projectName}
+Industry: ${projectContext?.industry || 'Enterprise Corporate'}
+Budget: ${projectContext?.budget || '$15M+'}
+
+DGRF ACTUARIAL EVALUATION:
+- Structural Governance Score (PrjGov): ${evaluation.gov.totalScore}/100 (Raw: ${evaluation.gov.rawBase}, Penalty: ${evaluation.gov.penalty})
+  - D1 Decision Authority & Mandate: ${evaluation.gov.breakdown.d1} / 25
+  - D2 Procurement & Vendor Risk: ${evaluation.gov.breakdown.d2} / 20
+  - D3 Scope CCB & Baseline: ${evaluation.gov.breakdown.d3} / 20
+  - D4 Contingency & Reserves: ${evaluation.gov.breakdown.d4} / 20
+  - D5 Architectural Complexity: ${evaluation.gov.breakdown.d5} / 15
+  - Interactive Penalty Active: ${evaluation.hasGovPenalty ? 'YES (+10 pts for D1=25 & D2>=13)' : 'NO'}
+
+- Operational Delivery Score (PrjDel): ${evaluation.del.totalScore}/100 (Raw: ${evaluation.del.rawBase})
+  - O1 Schedule Slip: ${evaluation.del.breakdown.o1} / 25
+  - O2 Budget Burn: ${evaluation.del.breakdown.o2} / 20
+  - O3 Defect Density: ${evaluation.del.breakdown.o3} / 20
+  - O4 Cognitive Fatigue & Turnover: ${evaluation.del.breakdown.o4} / 20
+  - O5 Stakeholder Friction: ${evaluation.del.breakdown.o5} / 15
+
+- Diagnostic Quadrant: ${evaluation.quadrant.id} (${evaluation.quadrant.name}) - ${evaluation.quadrant.urgency}
+- Buffer Zone [40-60]: ${evaluation.inBufferZone ? 'ACTIVE METASTABILITY' : 'RESOLVED'}
+
+YOUR TASK:
+Synthesize 3 distinct agent advisory viewpoints:
+1. Agent 1: Triage Lead (Identifies root cause failure vectors and active governance traps).
+2. Agent 2: Actuary (Analyzes capital burn velocity, contractual misalignment, and penalty triggers).
+3. Agent 3: Recovery Architect (Provides a prioritized 30-60-90 day intervention blueprint and 72-hour reset mandate).
+
+Output strictly valid JSON with NO surrounding markdown backticks or commentary matching this exact schema:
+{
+  "triageLead": {
+    "agentTitle": "Agent 1: Triage Lead (Governance & Structural Diagnostics)",
+    "headline": "String summarizing diagnosis",
+    "diagnosticSummary": "Paragraph analyzing organizational failure modes",
+    "rootCauseVectors": [
+      { "vectorNumber": 1, "title": "Vector 1 Title", "severity": "CRITICAL", "mechanics": "Explanation" },
+      { "vectorNumber": 2, "title": "Vector 2 Title", "severity": "HIGH", "mechanics": "Explanation" },
+      { "vectorNumber": 3, "title": "Vector 3 Title", "severity": "HIGH", "mechanics": "Explanation" }
+    ],
+    "activeGovernanceTraps": ["Trap 1", "Trap 2"]
+  },
+  "actuary": {
+    "agentTitle": "Agent 2: Actuary (Capital Velocity & Risk Modeling)",
+    "headline": "String summarizing financial exposure",
+    "capitalBurnVelocity": "Analysis of burn rate vs capability realization",
+    "contractualMisalignment": "Analysis of commercial vendor incentives",
+    "penaltyTriggerAnalysis": "Explanation of mathematical interaction penalties",
+    "actuarialLossExposure": "Quantification of potential write-down",
+    "financialRiskRating": "SEVERE DEFICIT",
+    "metricsSummary": {
+      "govScore": ${evaluation.gov.totalScore},
+      "delScore": ${evaluation.del.totalScore},
+      "penaltyApplied": ${evaluation.gov.penalty},
+      "quadrantId": "${evaluation.quadrant.id}"
+    }
+  },
+  "recoveryArchitect": {
+    "agentTitle": "Agent 3: Recovery Architect (Intervention Engineering)",
+    "headline": "String summarizing recovery posture",
+    "seventyTwoHourMandate": {
+      "action": "Immediate 72-hour emergency step",
+      "rationale": "Why this must happen now",
+      "deliverable": "Tangible artifact produced in 72 hours"
+    },
+    "interventionBlueprint": {
+      "thirtyDay": ["Item 1", "Item 2", "Item 3"],
+      "sixtyDay": ["Item 1", "Item 2"],
+      "ninetyDay": ["Item 1", "Item 2"]
+    },
+    "exitCriteria": "Measurable threshold to exit current high-risk state"
+  }
+}
+`;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: 'application/json',
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.warn(`Gemini API error ${response.status}. Defaulting to deterministic Tri-Agent fallback.`);
+      return generateDeterministicTriAgentFallback(evaluation, projectContext);
+    }
+
+    const data = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!rawText) {
+      return generateDeterministicTriAgentFallback(evaluation, projectContext);
+    }
+
+    const cleaned = rawText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
+    const parsed = JSON.parse(cleaned);
+
+    return {
+      ...parsed,
+      metadata: {
+        projectName,
+        generatedAt: new Date().toISOString(),
+        source: 'gemini-2.5-flash',
+        authorCredit: 'DGRF Framework authored by Ali Maleki',
+      },
+    };
+  } catch (err) {
+    console.error('Error invoking Gemini 2.5 Flash:', err);
+    return generateDeterministicTriAgentFallback(evaluation, projectContext);
+  }
+}
+
+/**
+ * Deterministic Tri-Agent Advisory Engine Fallback (Zero-Latency / Offline)
+ * Formulated upon Ali Maleki's DGRF peer-reviewed paper rules.
+ */
+export function generateDeterministicTriAgentFallback(
+  evaluation: CockpitEvaluation,
+  projectContext?: { name?: string; industry?: string; budget?: string }
+): TriAgentOutput {
+  const pName = projectContext?.name || 'The initiative';
+  const qId = evaluation.quadrant.id;
+  const hasPenalty = evaluation.hasGovPenalty;
+
+  if (qId === 'Q1') {
+    return {
+      triageLead: {
+        agentTitle: 'Agent 1: Triage Lead (Governance & Structural Diagnostics)',
+        headline: `Acute Systemic Fragility: ${pName} is trapped in a multi-vector collapse trajectory.`,
+        diagnosticSummary: `${pName} exhibits concurrent breakdown across both Structural Governance (${evaluation.gov.totalScore}/100) and Operational Delivery (${evaluation.del.totalScore}/100). Upstream decision rights have disintegrated, while ground delivery is overwhelmed by mounting schedule compression and defect inflow. Continuing execution without intervention constitutes fiduciary negligence.`,
+        rootCauseVectors: [
+          {
+            vectorNumber: 1,
+            title: 'Paralyzed Executive Decision Rights',
+            severity: 'CRITICAL',
+            mechanics: `Decision authority score (D1: ${evaluation.gov.breakdown.d1}/25) reflects diffuse accountability. Critical impediments stall for weeks across consensus committees.`,
+          },
+          {
+            vectorNumber: 2,
+            title: 'Adversarial Procurement Friction & Lock-in',
+            severity: 'CRITICAL',
+            mechanics: `Vendor risk allocation (D2: ${evaluation.gov.breakdown.d2}/20) incentivizes scope change requests rather than verified delivery milestone completion.`,
+          },
+          {
+            vectorNumber: 3,
+            title: 'Quality Kinetics Breakdown (Defect Inflow)',
+            severity: 'HIGH',
+            mechanics: `Defect density (O3: ${evaluation.del.breakdown.o3}/20) outpaces resolution capacity, triggering desperate testing shortcuts on the critical path (O1: ${evaluation.del.breakdown.o1}/25).`,
+          },
+        ],
+        activeGovernanceTraps: [
+          'The Watermelon Effect: Green dashboards presented to steering committees concealing red engineering realities.',
+          hasPenalty ? 'Compound Authority-Vendor Lock-in: Paralyzed sponsor rights combined with predatory vendor billing.' : 'The Cosmetic Re-baseline Trap: Moving milestone dates without reducing scope or technical dependencies.',
+        ],
+      },
+      actuary: {
+        agentTitle: 'Agent 2: Actuary (Capital Velocity & Risk Modeling)',
+        headline: `Runaway Capital Depletion: Spending is decoupled from verified capability realization.`,
+        capitalBurnVelocity: `CPI is severely degraded. Capital expenditure is flowing into contractor overhead, change order negotiation, and regression defect firefighting rather than usable business software.`,
+        contractualMisalignment: `Commercial terms reward the vendor for project duration and complexity rather than delivered business value. Contractual ambiguity creates an escalating change-request tollbooth.`,
+        penaltyTriggerAnalysis: hasPenalty
+          ? 'Mathematical Rule Triggered: D1=25 (Absentee Mandate) combined with D2>=13 (Adversarial Procurement) activates the +10 Nonlinear Interaction Penalty, driving composite Governance to ' + evaluation.gov.totalScore + '/100.'
+          : 'Interactive threshold sitting at ' + evaluation.gov.rawBase + ' pts base governance. Further vendor friction will trigger the 10-point systemic penalty.',
+        actuarialLossExposure: 'Estimated 65–85% loss of invested capital if program is not immediately restructured.',
+        financialRiskRating: 'SEVERE DEFICIT',
+        metricsSummary: {
+          govScore: evaluation.gov.totalScore,
+          delScore: evaluation.del.totalScore,
+          penaltyApplied: evaluation.gov.penalty,
+          quadrantId: 'Q1',
+        },
+      },
+      recoveryArchitect: {
+        agentTitle: 'Agent 3: Recovery Architect (Intervention Engineering)',
+        headline: 'Emergency Turnaround Mandate: 72-Hour Capital Freeze & Architectural Reset.',
+        seventyTwoHourMandate: {
+          action: 'Institute an immediate 72-Hour Capital Freeze & dissolve multi-stakeholder consensus steering committee.',
+          rationale: 'Stop ongoing capital bleeding and prevent vendors from logging unverified billable milestones.',
+          deliverable: 'Board-mandated single turnaround officer appointed with unilateral veto authority over budget and scope.',
+        },
+        interventionBlueprint: {
+          thirtyDay: [
+            'Conduct an exhaustive zero-base scope audit: cut minimum 35% of secondary feature requirements.',
+            'Restructure vendor contract from uncapped billing into 3 verifiable milestone deliverables with defect escrow.',
+            'Establish an insulated 2-week stabilization sprint dedicated 100% to clearing Sev-1/Sev-2 blockers.',
+          ],
+          sixtyDay: [
+            'Implement automated regression and deployment telemetry to eliminate manual status reporting.',
+            'Re-baseline schedule using Monte Carlo probabilistic modeling with a 20% protected contingency reserve.',
+          ],
+          ninetyDay: [
+            'Validate first end-to-end integration slice in staging environment under actual user traffic.',
+            'Transition program from Q1 into Q4 (Execution Controlled) as governance parameters stabilize.',
+          ],
+        },
+        exitCriteria: 'Composite PrjGov reduced below 50, zero open Sev-1 defect backlog, and SPI >= 0.90 across 3 consecutive sprints.',
+      },
+      metadata: {
+        projectName: pName,
+        generatedAt: new Date().toISOString(),
+        source: 'deterministic-tri-agent-fallback',
+        authorCredit: 'DGRF Framework authored by Ali Maleki',
+      },
+    };
+  }
+
+  if (qId === 'Q2') {
+    return {
+      triageLead: {
+        agentTitle: 'Agent 1: Triage Lead (Governance & Structural Diagnostics)',
+        headline: `Fragile Governance Trap: Ground delivery is temporarily subsidizing toxic upstream governance.`,
+        diagnosticSummary: `${pName} is operating under the "Heroic Engineers on a Sinking Ship" dynamic. Operational delivery registers controlled risk (${evaluation.del.totalScore}/100), but Structural Governance is dangerously elevated (${evaluation.gov.totalScore}/100). The current progress is held together by lead engineer overtime and architecture insulation, but team burnout or contract disputes will cause a sudden cliff migration into Q1.`,
+        rootCauseVectors: [
+          {
+            vectorNumber: 1,
+            title: 'Diffuse Sponsor Ownership',
+            severity: 'HIGH',
+            mechanics: `Decision rights (D1: ${evaluation.gov.breakdown.d1}/25) require navigating political consensus rather than clear executive ownership.`,
+          },
+          {
+            vectorNumber: 2,
+            title: 'Scope Infiltration without CCB Balance',
+            severity: 'HIGH',
+            mechanics: `Scope governance (D3: ${evaluation.gov.breakdown.d3}/20) lacks zero-sum subtraction discipline, continually leaking executive pet features into sprints.`,
+          },
+          {
+            vectorNumber: 3,
+            title: 'Contingency Reserve Vulnerability',
+            severity: 'MODERATE',
+            mechanics: `Reserve governance (D4: ${evaluation.gov.breakdown.d4}/20) leaves zero financial margin to absorb legacy system integration hurdles.`,
+          },
+        ],
+        activeGovernanceTraps: [
+          'The Heroic Subsidy: Praising developers for late-night rescues instead of fixing upstream requirements chaos.',
+          'The Scope Sponge: Delivery team absorbing ad-hoc stakeholder demands without contractual cost adjustments.',
+        ],
+      },
+      actuary: {
+        agentTitle: 'Agent 2: Actuary (Capital Velocity & Risk Modeling)',
+        headline: `Hidden Contractual Risk: High burn efficiency masking upstream legal & scope exposure.`,
+        capitalBurnVelocity: `Burn rate is currently efficient (CPI near baseline), but unapproved scope expansion is accumulating unfunded liabilities.`,
+        contractualMisalignment: `Vendor is executing well technically but will seek contract re-negotiation or substantial claims once initial commitments are completed.`,
+        penaltyTriggerAnalysis: hasPenalty
+          ? 'Structural penalty active due to vendor lock-in. Governance reform required immediately.'
+          : 'Structural score sitting at ' + evaluation.gov.totalScore + '/100. Any escalation in vendor disputes will cross into Q1 territory.',
+        actuarialLossExposure: '30–45% risk of budget expansion when unmanaged scope surfaces during user acceptance testing.',
+        financialRiskRating: 'UNCHECKED EROSION',
+        metricsSummary: {
+          govScore: evaluation.gov.totalScore,
+          delScore: evaluation.del.totalScore,
+          penaltyApplied: evaluation.gov.penalty,
+          quadrantId: 'Q2',
+        },
+      },
+      recoveryArchitect: {
+        agentTitle: 'Agent 3: Recovery Architect (Intervention Engineering)',
+        headline: 'Upstream Governance Lockdown: Protect Delivery Velocity and Re-anchor Mandate.',
+        seventyTwoHourMandate: {
+          action: 'Establish an executive umbrella locking the backlog and shielding delivery squads from political steering meetings.',
+          rationale: 'Stop engineering leads from burning cognitive capacity on stakeholder diplomacy.',
+          deliverable: 'Backlog intake freeze memorandum signed by C-level sponsor.',
+        },
+        interventionBlueprint: {
+          thirtyDay: [
+            'Empower a single Product Owner with exclusive backlog prioritization authority; eliminate stakeholder vetoes.',
+            'Institute a strict zero-sum CCB policy: any new feature request must remove equal story points from the current release.',
+            'Conduct a formal contract alignment check with vendor leadership to formalize scope boundaries.',
+          ],
+          sixtyDay: [
+            'Re-fund contingency reserves to a minimum of 20% under sole sponsor control.',
+            'Codify architectural contracts to ensure delivery decoupled from legacy enterprise silos.',
+          ],
+          ninetyDay: [
+            'Transition program from Q2 into Q3 (Resilient Equilibrium) as upstream governance catches up to delivery excellence.',
+          ],
+        },
+        exitCriteria: 'PrjGov reduced below 50, zero ad-hoc scope inclusions, and formalized sponsor escalation pathway.',
+      },
+      metadata: {
+        projectName: pName,
+        generatedAt: new Date().toISOString(),
+        source: 'deterministic-tri-agent-fallback',
+        authorCredit: 'DGRF Framework authored by Ali Maleki',
+      },
+    };
+  }
+
+  if (qId === 'Q4') {
+    return {
+      triageLead: {
+        agentTitle: 'Agent 1: Triage Lead (Governance & Structural Diagnostics)',
+        headline: `Execution Constraint: Strong governance charter blocked by ground-level delivery friction.`,
+        diagnosticSummary: `${pName} exhibits healthy structural governance (${evaluation.gov.totalScore}/100) but suffers from acute operational delivery drag (${evaluation.del.totalScore}/100). Executive sponsorship is unified and funding is secure, but the delivery machinery is choking on legacy system coupling, test bottlenecks, or team fatigue.`,
+        rootCauseVectors: [
+          {
+            vectorNumber: 1,
+            title: 'Critical Path Schedule Friction',
+            severity: 'CRITICAL',
+            mechanics: `Schedule variance (O1: ${evaluation.del.breakdown.o1}/25) is slipping due to unpredicted integration complexity.`,
+          },
+          {
+            vectorNumber: 2,
+            title: 'Testing Automation & Defect Drag',
+            severity: 'HIGH',
+            mechanics: `Defect density (O3: ${evaluation.del.breakdown.o3}/20) is slowing sprint velocity due to excessive manual regression testing.`,
+          },
+          {
+            vectorNumber: 3,
+            title: 'Cognitive Load and Team Fatigue',
+            severity: 'MODERATE',
+            mechanics: `Engineering team morale (O4: ${evaluation.del.breakdown.o4}/20) is strained by frequent emergency patch deployments.`,
+          },
+        ],
+        activeGovernanceTraps: [
+          'The Oversight Fallacy: Adding more PMO status meetings and administrative reports to solve pure technical debt.',
+          'The Sprint Crunch: Pressuring exhausted developers to work weekends instead of automating release pipelines.',
+        ],
+      },
+      actuary: {
+        agentTitle: 'Agent 2: Actuary (Capital Velocity & Risk Modeling)',
+        headline: 'Execution Efficiency Deficit: Capital is available but technical friction delays realization.',
+        capitalBurnVelocity: 'Burn rate is manageable, but schedule delays threaten market opportunity windows.',
+        contractualMisalignment: 'Vendor relationships are healthy, but contractual staffing lacks specialized senior engineering talent in core integration areas.',
+        penaltyTriggerAnalysis: 'Zero structural penalties active. Focus must remain on operational engineering unblocking.',
+        actuarialLossExposure: '15–25% delay penalty risk unless testing automation is prioritized.',
+        financialRiskRating: 'MODERATE DRAG',
+        metricsSummary: {
+          govScore: evaluation.gov.totalScore,
+          delScore: evaluation.del.totalScore,
+          penaltyApplied: evaluation.gov.penalty,
+          quadrantId: 'Q4',
+        },
+      },
+      recoveryArchitect: {
+        agentTitle: 'Agent 3: Recovery Architect (Intervention Engineering)',
+        headline: 'Technical Capacity Injection: Automate Pipelines & Slash Work-In-Progress.',
+        seventyTwoHourMandate: {
+          action: 'Slash Work-In-Progress (WIP) by 40% and abolish all non-essential administrative status meetings.',
+          rationale: 'Give engineering teams immediate cognitive room to fix core CI/CD and architectural bottlenecks.',
+          deliverable: 'Automated test pipeline audit and senior technical lead onboarding plan.',
+        },
+        interventionBlueprint: {
+          thirtyDay: [
+            'Dedicate the next 2 sprints exclusively to CI/CD pipeline automation and regression test suites.',
+            'Augment team with 2 specialized senior platform engineers to resolve legacy coupling bottlenecks.',
+            'Eliminate manual status slide decks; replace with automated Jira/Git telemetry.',
+          ],
+          sixtyDay: [
+            'Achieve 80%+ automated regression test pass rates on all pull requests.',
+            'Stabilize sprint velocity and reduce Mean Time To Recovery (MTTR) below 2 hours.',
+          ],
+          ninetyDay: [
+            'Transition program from Q4 into Q3 (Resilient Equilibrium) as delivery drag dissolves.',
+          ],
+        },
+        exitCriteria: 'PrjDel reduced below 50, critical path milestones on schedule, and automated release pipeline active.',
+      },
+      metadata: {
+        projectName: pName,
+        generatedAt: new Date().toISOString(),
+        source: 'deterministic-tri-agent-fallback',
+        authorCredit: 'DGRF Framework authored by Ali Maleki',
+      },
+    };
+  }
+
+  // Q3: Resilient Equilibrium
+  return {
+    triageLead: {
+      agentTitle: 'Agent 1: Triage Lead (Governance & Structural Diagnostics)',
+      headline: `Resilient Operating Equilibrium: ${pName} demonstrates exemplary enterprise delivery standards.`,
+      diagnosticSummary: `${pName} resides firmly in Quadrant 3 (${evaluation.gov.totalScore}/100 Gov, ${evaluation.del.totalScore}/100 Del). Decision rights are single-threaded, vendor contracts are outcome-aligned, defect arrival is tightly controlled, and reporting candor is high. This program serves as an enterprise benchmark.`,
+      rootCauseVectors: [
+        {
+          vectorNumber: 1,
+          title: 'Exemplary Decision Clarity',
+          severity: 'LOW',
+          mechanics: `Single-point sponsor ownership (D1: ${evaluation.gov.breakdown.d1}/25) enables swift resolution of blockers.`,
+        },
+        {
+          vectorNumber: 2,
+          title: 'Decoupled Technical Architecture',
+          severity: 'LOW',
+          mechanics: `Modular boundaries (D5: ${evaluation.gov.breakdown.d5}/15) enable autonomous delivery squads without cascading regressions.`,
+        },
+        {
+          vectorNumber: 3,
+          title: 'Predictable Delivery Velocity',
+          severity: 'LOW',
+          mechanics: `Critical path milestones (O1: ${evaluation.del.breakdown.o1}/25) and defect containment (O3: ${evaluation.del.breakdown.o3}/20) track plans accurately.`,
+        },
+      ],
+      activeGovernanceTraps: [
+        'Complacency Trap: Allowing cosmetic scope creep or executive pet projects to infiltrate a high-performing baseline.',
+        'Over-governance: Attempting to standardize or add bureaucratic reporting layers onto an already thriving initiative.',
+      ],
+    },
+    actuary: {
+      agentTitle: 'Agent 2: Actuary (Capital Velocity & Risk Modeling)',
+      headline: 'Optimal Capital Efficiency: High ROI with predictable capital realization.',
+      capitalBurnVelocity: 'CPI >= 1.0. Every invested dollar yields tangible, tested software capabilities aligned with business value.',
+      contractualMisalignment: 'Shared risk-reward milestones successfully incentivize vendor delivery excellence and talent retention.',
+      penaltyTriggerAnalysis: 'Zero structural or operational penalties. Model confirms robust mathematical margin.',
+      actuarialLossExposure: '< 5% residual risk under standard enterprise market conditions.',
+      financialRiskRating: 'STABLE EQUILIBRIUM',
+      metricsSummary: {
+        govScore: evaluation.gov.totalScore,
+        delScore: evaluation.del.totalScore,
+        penaltyApplied: evaluation.gov.penalty,
+        quadrantId: 'Q3',
+      },
+    },
+    recoveryArchitect: {
+      agentTitle: 'Agent 3: Recovery Architect (Intervention Engineering)',
+      headline: 'Sustain & Scale: Protect Team Autonomy and Codify Best Practices.',
+      seventyTwoHourMandate: {
+        action: 'Formally protect team charter and publish sprint velocity telemetry to executive board.',
+        rationale: 'Prevent external interference while recognizing high-performing engineering culture.',
+        deliverable: 'Executive program status brief confirming target milestone dates.',
+      },
+      interventionBlueprint: {
+        thirtyDay: [
+          'Maintain rigorous CCB zero-sum change discipline to prevent late-stage scope creep.',
+          'Codify engineering practices (automated CI/CD, testing standards) for broader organization adoption.',
+        ],
+        sixtyDay: [
+          'Lock in long-term key talent retention packages for core architects and engineers.',
+          'Review post-launch operational readiness and transition to DevOps support.',
+        ],
+        ninetyDay: [
+          'Execute scheduled production cutover with zero downtime deployment strategies.',
+        ],
+      },
+      exitCriteria: 'Maintain PrjGov and PrjDel <= 50 through final go-live and stabilization.',
+    },
+    metadata: {
+      projectName: pName,
+      generatedAt: new Date().toISOString(),
+      source: 'deterministic-tri-agent-fallback',
+      authorCredit: 'DGRF Framework authored by Ali Maleki',
+    },
+  };
+}
+
+/**
+ * Backward compatibility interface and adapter for ExecutiveSummary and LeadModal
+ */
 export interface ClinicalBriefResponse {
   headline: string;
   executiveSummary: string;
@@ -19,240 +546,21 @@ export interface ClinicalBriefResponse {
 }
 
 export async function generateExecutiveBrief(
-  evaluation: EvaluationResult,
+  evaluation: any,
   projectContext?: { name?: string; industry?: string; budget?: string }
 ): Promise<ClinicalBriefResponse> {
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    return generateDeterministicFallback(evaluation, projectContext);
-  }
-
-  const prompt = `
-You are an elite Enterprise IT Governance and Turnaround Architect acting as a clinical advisor to the Board of Directors, CIO, and CTO.
-Analyze the following Delivery & Governance Risk Framework (DGRF) assessment for:
-Project Name: ${projectContext?.name || 'Enterprise Program'}
-Industry: ${projectContext?.industry || 'Enterprise Corporate'}
-Budget: ${projectContext?.budget || '$10M+'}
-
----
-DGRF ASSESSMENT SCORES:
-Structural Governance Score (PrjGov): ${evaluation.gov.totalScore} / 100 (Raw: ${evaluation.gov.rawBase}, Penalty: ${evaluation.gov.penalty})
-- D1 Authority: ${evaluation.gov.breakdown.d1} / 25
-- D2 Procurement: ${evaluation.gov.breakdown.d2} / 20
-- D3 Scope CCB: ${evaluation.gov.breakdown.d3} / 20
-- D4 Risk Contingency: ${evaluation.gov.breakdown.d4} / 20
-- D5 Architecture Coupling: ${evaluation.gov.breakdown.d5} / 15
-
-Operational Delivery Score (PrjDel): ${evaluation.del.totalScore} / 100 (Raw: ${evaluation.del.rawBase}, Penalty: ${evaluation.del.penalty})
-- O1 Schedule: ${evaluation.del.breakdown.o1} / 25
-- O2 Acceptance: ${evaluation.del.breakdown.o2} / 20
-- O3 Capital Efficiency: ${evaluation.del.breakdown.o3} / 20
-- O4 Team Morale: ${evaluation.del.breakdown.o4} / 15
-- O5 Reporting Truth: ${evaluation.del.breakdown.o5} / 20
-
-Diagnostic Quadrant: ${evaluation.quadrant.id} (${evaluation.quadrant.name})
-In Buffer Zone [40-60]: ${evaluation.inBufferZone ? 'YES - Metastable boundary conditions' : 'NO'}
-
----
-TASK:
-Produce an incisive, clinical, executive-grade diagnostic brief. Be direct, authoritative, and eliminate corporate euphemisms. 
-Output strictly valid JSON with this exact schema:
-{
-  "headline": "One punchy sentence summarizing the clinical status",
-  "executiveSummary": "2-3 concise paragraphs of diagnostic assessment",
-  "rootCauseAnalysis": [
-    "Specific structural or operational failure mode 1",
-    "Specific structural or operational failure mode 2",
-    "Specific structural or operational failure mode 3"
-  ],
-  "thirtyDayActionPlan": {
-    "stopImmediate": ["Action to cease immediately", "Action to cease immediately"],
-    "startImmediate": ["Action to commence immediately", "Action to commence immediately"],
-    "renegotiate": ["Contractual or governance terms to overhaul"]
-  },
-  "prognosticOutlook": "Prognosis over the next 90 days if interventions are not taken vs if taken."
-}
-Do not wrap in markdown fences or backticks. Return raw JSON only.
-`;
-
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: 'user',
-              parts: [{ text: prompt }],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.2,
-            responseMimeType: 'application/json',
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      console.warn(`Gemini API returned status ${response.status}. Using deterministic fallback.`);
-      return generateDeterministicFallback(evaluation, projectContext);
-    }
-
-    const data = await response.json();
-    const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!candidateText) {
-      return generateDeterministicFallback(evaluation, projectContext);
-    }
-
-    const cleaned = candidateText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '').trim();
-    const parsed = JSON.parse(cleaned);
-    return {
-      ...parsed,
-      source: 'gemini-flash',
-    };
-  } catch (err) {
-    console.error('Error generating brief with Gemini:', err);
-    return generateDeterministicFallback(evaluation, projectContext);
-  }
-}
-
-/**
- * Deterministic clinical intelligence engine fallback based on DGRF paper rules.
- */
-export function generateDeterministicFallback(
-  evaluation: EvaluationResult,
-  projectContext?: { name?: string; industry?: string; budget?: string }
-): ClinicalBriefResponse {
-  const pName = projectContext?.name || 'The initiative';
-  const qId = evaluation.quadrant.id;
-  const isBuffer = evaluation.inBufferZone;
-  const govPen = evaluation.gov.penalty > 0;
-  const delPen = evaluation.del.penalty > 0;
-
-  if (qId === 'Q1') {
-    return {
-      headline: `Acute Systemic Fragility: ${pName} is burning capital with compounded structural paralysis and delivery collapse.`,
-      executiveSummary: `${pName} exhibits simultaneous breakdown across both Structural Governance (${evaluation.gov.totalScore}/100) and Operational Delivery (${evaluation.del.totalScore}/100). ${
-        govPen ? 'The presence of the D1-D2 Structural Interaction Penalty indicates that paralyzed decision rights are directly compounding adversarial vendor commercial friction.' : ''
-      } ${
-        delPen ? 'Concurrently, the O1-O2 Operational Interaction Penalty reveals that critical path schedule delays have triggered desperate quality shortcuts, causing an uncontrolled defect explosion.' : ''
-      } Continuing business-as-usual execution represents fiduciary negligence; capital expenditure is decoupled from verified capability realization.`,
-      rootCauseAnalysis: [
-        `Governance Paralysis: Diffuse decision authority (D1: ${evaluation.gov.breakdown.d1}/25) leaves commercial and technical impediments unescalated.`,
-        `Quality & Velocity Collapse: Critical path variance (O1: ${evaluation.del.breakdown.o1}/25) coupled with defect backlog (O2: ${evaluation.del.breakdown.o2}/20) has created an irreversible crunch spiral.`,
-        `Information Filtering: Status reporting candor (O5: ${evaluation.del.breakdown.o5}/20) reflects severe "Watermelon Effect" masking reality from senior leadership.`,
-      ],
-      thirtyDayActionPlan: {
-        stopImmediate: [
-          'Halt all non-essential feature development and issue an immediate capital freeze.',
-          'Cease all cosmetic milestone re-baselining until causal dependencies are mapped.',
-        ],
-        startImmediate: [
-          'Appoint a single accountable turnaround executive with unilateral budget and scope discretion.',
-          'Execute a zero-defect stabilization sprint focusing exclusively on release blockers.',
-        ],
-        renegotiate: [
-          'Convert adversarial fixed-price vendor contracts into shared risk-reward milestones with performance gates.',
-          'Restructure change control boards to enforce a strict zero-sum scope reduction policy.',
-        ],
-      },
-      prognosticOutlook:
-        'If unaddressed, total write-down or emergency contract termination will occur within 60 to 90 days. If the 30-day intervention is executed, the initiative can stabilize into Quadrant 4 within two quarters.',
-      source: 'deterministic-fallback',
-    };
-  }
-
-  if (qId === 'Q2') {
-    return {
-      headline: `Fragile Governance Trap: Exceptional engineering heroics are temporarily compensating for rotten upstream governance.`,
-      executiveSummary: `${pName} is operating under the classic "Heroic Engineers on a Sinking Ship" dynamic. While operational delivery registers a viable score (${evaluation.del.totalScore}/100), structural governance risk is severely elevated (${evaluation.gov.totalScore}/100). The current delivery momentum is unsustainable and being subsidized by engineering overtime and emotional investment. Without prompt intervention at the steering committee level, team burnout will inevitably trigger an abrupt migration into Quadrant 1.`,
-      rootCauseAnalysis: [
-        `Sponsorship Deficit: Upstream governance (D1: ${evaluation.gov.breakdown.d1}/25) forces engineers to make business prioritization trade-offs without cover.`,
-        `Scope Infiltration: Change control discipline (D3: ${evaluation.gov.breakdown.d3}/20) lacks zero-sum boundaries, continually leaking unvetted requirements into sprints.`,
-        `Contingency Depletion: Capital reserves (D4: ${evaluation.gov.breakdown.d4}/20) provide inadequate runway to absorb legacy technical discoveries.`,
-      ],
-      thirtyDayActionPlan: {
-        stopImmediate: [
-          'Stop engineering teams from participating in multi-stakeholder consensus steering sessions.',
-          'Cease absorbing ad-hoc executive backlog requests without formal CCB subtraction.',
-        ],
-        startImmediate: [
-          'Establish an executive umbrella to insulate delivery squads from organizational politics.',
-          'Implement explicit team cognitive load caps to protect lead architecture personnel.',
-        ],
-        renegotiate: [
-          'Re-align commercial vendor statements of work to penalize scope churn rather than sprint velocity.',
-          'Mandate formal board sign-off on a ring-fenced 20% financial and schedule contingency reserve.',
-        ],
-      },
-      prognosticOutlook:
-        'Left unmitigated, key architecture leads will resign within 90 days, triggering immediate schedule collapse into Q1. Immediate structural reform will transition this program into Quadrant 3 Resilient Conditions.',
-      source: 'deterministic-fallback',
-    };
-  }
-
-  if (qId === 'Q3') {
-    return {
-      headline: `Resilient Operating Benchmark: ${pName} demonstrates exemplary governance alignment and delivery discipline.`,
-      executiveSummary: `${pName} registers in Quadrant 3 (${evaluation.gov.totalScore}/100 Gov, ${evaluation.del.totalScore}/100 Del), reflecting the target operating equilibrium for enterprise IT investments. Decision authority is single-threaded, vendor incentives are outcome-aligned, defect arrival is contained, and reporting candor is high. ${
-        isBuffer ? 'Note: The program resides near the upper edge of the [40, 60] buffer zone; vigilance is required to prevent scope or architecture creep.' : 'The initiative serves as an organizational lighthouse.'
-      }`,
-      rootCauseAnalysis: [
-        `Decisive Governance: Clear escalation pathways and accountable ownership (D1: ${evaluation.gov.breakdown.d1}/25) minimize decision latency.`,
-        `Technical Integrity: Architectural coupling (D5: ${evaluation.gov.breakdown.d5}/15) is managed with clean contracts, enabling autonomous deployments.`,
-        `Psychological Safety: Engineering morale (O4: ${evaluation.del.breakdown.o4}/15) and reporting truth (O5: ${evaluation.del.breakdown.o5}/20) reflect high candor without fear of reprisal.`,
-      ],
-      thirtyDayActionPlan: {
-        stopImmediate: [
-          'Resist top-down pressure to accelerate velocity beyond sustainable team cadence.',
-          'Avoid introducing administrative reporting layers that dilute engineering focus.',
-        ],
-        startImmediate: [
-          'Codify best practices into corporate engineering playbook for cross-program replication.',
-          'Maintain automated regression coverage and DORA metric telemetry tracking.',
-        ],
-        renegotiate: [
-          'Lock in long-term key talent retention packages for core architects and engineers.',
-          'Extend outcome-based vendor contracts for subsequent release phases.',
-        ],
-      },
-      prognosticOutlook:
-        'High probability (>85%) of successful value realization on schedule and within budget, provided executive leadership prevents bureaucratic scope expansion.',
-      source: 'deterministic-fallback',
-    };
-  }
-
-  // Q4: Execution Constraint
+  const triAgent = await generateTriAgentBrief(evaluation, projectContext);
   return {
-    headline: `Execution Constraint: Sound governance charter compromised by technical debt and execution friction.`,
-    executiveSummary: `${pName} exhibits strong structural governance (${evaluation.gov.totalScore}/100) but suffers from acute operational delivery drag (${evaluation.del.totalScore}/100). The steering committee is aligned, funding is secure, and decision rights are unambiguous; however, the ground delivery machinery is choking on legacy dependencies, testing bottlenecks, or skill mismatches. The common executive error in Q4 is adding more project managers or steering oversight; what is needed is pure engineering capability injection.`,
-    rootCauseAnalysis: [
-      `Technical & Tooling Debt: Defect burn-down (O2: ${evaluation.del.breakdown.o2}/20) or test automation bottlenecks are stalling feature release velocity.`,
-      `Capacity & Skill Mismatch: Delivery squads lack specialized domain knowledge or are grappling with monolithic coupling (D5: ${evaluation.gov.breakdown.d5}/15).`,
-      `Cognitive Fatigue: Team morale (O4: ${evaluation.del.breakdown.o4}/15) is deteriorating due to repetitive manual regression testing and release heroics.`,
-    ],
+    headline: triAgent.triageLead.headline,
+    executiveSummary: triAgent.triageLead.diagnosticSummary,
+    rootCauseAnalysis: triAgent.triageLead.rootCauseVectors.map((v) => `${v.title}: ${v.mechanics}`),
     thirtyDayActionPlan: {
-      stopImmediate: [
-        'Do NOT add more status meetings, PMO governance layers, or steering oversight.',
-        'Stop committing to new functional deliverables until testing pipelines are automated.',
-      ],
-      startImmediate: [
-        'Deploy dedicated senior architecture advisors to unblock integration and testing pipelines.',
-        'Slash work-in-progress (WIP) by 40% to allow teams to clear accumulated technical debt.',
-      ],
-      renegotiate: [
-        'Augment vendor staffing with proven specialized technical leads in place of generalist developers.',
-        'Allocate 30% of upcoming sprint capacity explicitly to architectural refactoring.',
-      ],
+      stopImmediate: [triAgent.recoveryArchitect.seventyTwoHourMandate.action],
+      startImmediate: triAgent.recoveryArchitect.interventionBlueprint.thirtyDay,
+      renegotiate: [triAgent.actuary.contractualMisalignment],
     },
-    prognosticOutlook:
-      'With targeted technical enablement and WIP reduction, the program will transition into Quadrant 3 within 60 days. Adding governance overhead will demoralize engineering and trigger attrition.',
-    source: 'deterministic-fallback',
+    prognosticOutlook: triAgent.actuary.actuarialLossExposure,
+    source: triAgent.metadata.source === 'gemini-2.5-flash' ? 'gemini-flash' : 'deterministic-fallback',
   };
 }
+

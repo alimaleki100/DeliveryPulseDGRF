@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { EvaluationResult } from '@/lib/engine/prj-evaluator';
+import { CockpitEvaluation } from '@/lib/engine/cockpit-engine';
 
 interface RiskRadarProps {
-  evaluation: EvaluationResult;
+  evaluation: CockpitEvaluation;
 }
 
 export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
@@ -12,7 +12,7 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
 
   const { gov, del } = evaluation;
 
-  // Normalized scores (0 to 100%)
+  // Normalized scores (0 to 100%) based on each dimension's max points
   const govDimensions = [
     { code: 'D1', name: 'Authority', val: gov.breakdown.d1, max: 25, norm: (gov.breakdown.d1 / 25) * 100 },
     { code: 'D2', name: 'Procurement', val: gov.breakdown.d2, max: 20, norm: (gov.breakdown.d2 / 20) * 100 },
@@ -23,10 +23,10 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
 
   const delDimensions = [
     { code: 'O1', name: 'Schedule', val: del.breakdown.o1, max: 25, norm: (del.breakdown.o1 / 25) * 100 },
-    { code: 'O2', name: 'Acceptance', val: del.breakdown.o2, max: 20, norm: (del.breakdown.o2 / 20) * 100 },
-    { code: 'O3', name: 'Capital (CPI)', val: del.breakdown.o3, max: 20, norm: (del.breakdown.o3 / 20) * 100 },
-    { code: 'O4', name: 'Morale', val: del.breakdown.o4, max: 15, norm: (del.breakdown.o4 / 15) * 100 },
-    { code: 'O5', name: 'Reporting Truth', val: del.breakdown.o5, max: 20, norm: (del.breakdown.o5 / 20) * 100 },
+    { code: 'O2', name: 'Budget Burn', val: del.breakdown.o2, max: 20, norm: (del.breakdown.o2 / 20) * 100 },
+    { code: 'O3', name: 'Defect Churn', val: del.breakdown.o3, max: 20, norm: (del.breakdown.o3 / 20) * 100 },
+    { code: 'O4', name: 'Turnover', val: del.breakdown.o4, max: 20, norm: (del.breakdown.o4 / 20) * 100 },
+    { code: 'O5', name: 'Alignment', val: del.breakdown.o5, max: 15, norm: (del.breakdown.o5 / 15) * 100 },
   ];
 
   const unifiedDimensions = [
@@ -38,9 +38,7 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
   const centerY = 100;
   const radius = 72;
 
-  // Helper to compute (x, y) for an index out of total items at percentage
   const getPoint = (index: number, total: number, percentage: number) => {
-    // Start from top (-90 degrees)
     const angle = (Math.PI * 2 / total) * index - Math.PI / 2;
     const r = (radius * percentage) / 100;
     const x = centerX + r * Math.cos(angle);
@@ -48,37 +46,38 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
     return { x, y };
   };
 
-  // Build polygon path for 5-spoke
   const getPolygonPath = (items: { norm: number }[]) => {
-    return items
+    return (
+      items
+        .map((item, idx) => {
+          const pt = getPoint(idx, items.length, Math.max(4, item.norm));
+          return `${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(2)} ${pt.y.toFixed(2)}`;
+        })
+        .join(' ') + ' Z'
+    );
+  };
+
+  const unifiedPath =
+    unifiedDimensions
       .map((item, idx) => {
-        const pt = getPoint(idx, items.length, item.norm);
+        const pt = getPoint(idx, 10, Math.max(4, item.norm));
         return `${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(2)} ${pt.y.toFixed(2)}`;
       })
       .join(' ') + ' Z';
-  };
-
-  // Build unified 10-spoke path
-  const unifiedPath = unifiedDimensions
-    .map((item, idx) => {
-      const pt = getPoint(idx, 10, item.norm);
-      return `${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(2)} ${pt.y.toFixed(2)}`;
-    })
-    .join(' ') + ' Z';
 
   return (
-    <div className="relative rounded-2xl bg-slate-900/90 border border-slate-800 p-5 shadow-2xl backdrop-blur-xl">
-      {/* Header with toggle */}
+    <div className="relative rounded-2xl bg-slate-900/90 border border-slate-800 p-5 shadow-2xl backdrop-blur-xl flex flex-col justify-between">
+      {/* Header with Mode Toggle */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-800/80 mb-3">
         <div>
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
             <h3 className="text-sm font-semibold tracking-wider uppercase text-slate-300">
-              Live SVG Risk Radar
+              10-Axis Live SVG Radar
             </h3>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Normalized 10-Dimensional Vector Calibration
+            Normalized Dual Overlays: Amber (Governance) & Blue (Delivery)
           </p>
         </div>
 
@@ -106,20 +105,20 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
         </div>
       </div>
 
-      {/* SVG Canvas */}
-      <div className="relative aspect-square w-full max-w-[440px] mx-auto select-none">
+      {/* SVG Radar Canvas */}
+      <div className="relative aspect-square w-full max-w-[440px] mx-auto select-none my-auto">
         <svg viewBox="0 0 200 200" className="w-full h-full overflow-visible">
           <defs>
-            <radialGradient id="radar-glow" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#0ea5e9" stopOpacity="0.08" />
-              <stop offset="100%" stopColor="#0ea5e9" stopOpacity="0" />
+            <radialGradient id="radar-glow-grad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.1" />
+              <stop offset="100%" stopColor="#080c14" stopOpacity="0" />
             </radialGradient>
           </defs>
 
-          {/* Background circle */}
-          <circle cx={centerX} cy={centerY} r={radius} fill="url(#radar-glow)" />
+          {/* Background circle glow */}
+          <circle cx={centerX} cy={centerY} r={radius} fill="url(#radar-glow-grad)" />
 
-          {/* Web Rings at 25%, 50%, 75%, 100% */}
+          {/* Concentric Web Rings at 25%, 50%, 75%, 100% */}
           {[25, 50, 75, 100].map((level) => (
             <g key={level}>
               <circle
@@ -130,12 +129,12 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
                 stroke={level === 50 ? '#6366f1' : '#334155'}
                 strokeWidth={level === 50 ? '0.9' : '0.5'}
                 strokeDasharray={level === 50 ? '2,2' : undefined}
-                strokeOpacity={level === 50 ? '0.7' : '0.4'}
+                strokeOpacity={level === 50 ? '0.75' : '0.4'}
               />
               <text
                 x={centerX + 2}
                 y={centerY - (radius * level) / 100 + 4}
-                className="fill-slate-600 text-[3px] select-none"
+                className="fill-slate-600 font-mono text-[3px] select-none"
               >
                 {level}%
               </text>
@@ -162,55 +161,55 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
                 );
               })}
 
-              {/* Structural Gov Polygon (Amber/Rose) */}
+              {/* Structural Gov Polygon (Amber) */}
               <path
                 d={getPolygonPath(govDimensions)}
                 fill="rgba(245, 158, 11, 0.22)"
-                stroke="#f59e0b"
-                strokeWidth="1.5"
+                stroke="#F59E0B"
+                strokeWidth="1.6"
                 strokeLinejoin="round"
                 className="transition-all duration-300"
               />
 
-              {/* Operational Del Polygon (Cyan/Sky) */}
+              {/* Operational Del Polygon (Sky/Cyan) */}
               <path
                 d={getPolygonPath(delDimensions)}
-                fill="rgba(56, 189, 248, 0.22)"
-                stroke="#38bdf8"
-                strokeWidth="1.5"
+                fill="rgba(14, 165, 233, 0.22)"
+                stroke="#0EA5E9"
+                strokeWidth="1.6"
                 strokeLinejoin="round"
                 className="transition-all duration-300"
               />
 
-              {/* Data points for Gov */}
+              {/* Gov Data points */}
               {govDimensions.map((d, idx) => {
-                const pt = getPoint(idx, 5, d.norm);
+                const pt = getPoint(idx, 5, Math.max(4, d.norm));
                 return (
                   <circle
                     key={`gov-${idx}`}
                     cx={pt.x}
                     cy={pt.y}
-                    r="2.2"
-                    fill="#f59e0b"
-                    stroke="#020617"
-                    strokeWidth="0.8"
+                    r="2.4"
+                    fill="#F59E0B"
+                    stroke="#080C14"
+                    strokeWidth="0.9"
                     className="transition-all duration-300"
                   />
                 );
               })}
 
-              {/* Data points for Del */}
+              {/* Del Data points */}
               {delDimensions.map((d, idx) => {
-                const pt = getPoint(idx, 5, d.norm);
+                const pt = getPoint(idx, 5, Math.max(4, d.norm));
                 return (
                   <circle
                     key={`del-${idx}`}
                     cx={pt.x}
                     cy={pt.y}
-                    r="2.2"
-                    fill="#38bdf8"
-                    stroke="#020617"
-                    strokeWidth="0.8"
+                    r="2.4"
+                    fill="#0EA5E9"
+                    stroke="#080C14"
+                    strokeWidth="0.9"
                     className="transition-all duration-300"
                   />
                 );
@@ -218,7 +217,7 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
 
               {/* Axis Labels */}
               {govDimensions.map((d, idx) => {
-                const pt = getPoint(idx, 5, 116);
+                const pt = getPoint(idx, 5, 117);
                 return (
                   <text
                     key={`lbl-${idx}`}
@@ -226,7 +225,7 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
                     y={pt.y}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    className="fill-slate-300 text-[3.8px] font-medium"
+                    className="fill-slate-300 font-mono text-[3.8px] font-semibold"
                   >
                     {d.code} / {delDimensions[idx].code}
                   </text>
@@ -254,24 +253,24 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
 
               <path
                 d={unifiedPath}
-                fill="rgba(16, 185, 129, 0.2)"
-                stroke="#10b981"
-                strokeWidth="1.5"
+                fill="rgba(99, 102, 241, 0.2)"
+                stroke="#6366F1"
+                strokeWidth="1.6"
                 strokeLinejoin="round"
                 className="transition-all duration-300"
               />
 
               {unifiedDimensions.map((d, idx) => {
-                const pt = getPoint(idx, 10, d.norm);
-                const color = d.type === 'gov' ? '#f59e0b' : '#38bdf8';
+                const pt = getPoint(idx, 10, Math.max(4, d.norm));
+                const color = d.type === 'gov' ? '#F59E0B' : '#0EA5E9';
                 return (
                   <circle
                     key={idx}
                     cx={pt.x}
                     cy={pt.y}
-                    r="2"
+                    r="2.2"
                     fill={color}
-                    stroke="#020617"
+                    stroke="#080C14"
                     strokeWidth="0.8"
                     className="transition-all duration-300"
                   />
@@ -279,7 +278,7 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
               })}
 
               {unifiedDimensions.map((d, idx) => {
-                const pt = getPoint(idx, 10, 116);
+                const pt = getPoint(idx, 10, 117);
                 return (
                   <text
                     key={idx}
@@ -287,7 +286,7 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
                     y={pt.y}
                     textAnchor="middle"
                     dominantBaseline="middle"
-                    className="fill-slate-400 text-[3.4px] font-medium"
+                    className="fill-slate-400 font-mono text-[3.4px] font-medium"
                   >
                     {d.code}
                   </text>
@@ -302,11 +301,15 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
       <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-around text-xs">
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-amber-500/80 border border-amber-400" />
-          <span className="text-slate-300 font-medium">Gov (D1–D5): {gov.totalScore}/100</span>
+          <span className="text-slate-300 font-medium font-mono">
+            Gov (D1–D5): {gov.totalScore}/100
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-sky-400/80 border border-sky-300" />
-          <span className="text-slate-300 font-medium">Del (O1–O5): {del.totalScore}/100</span>
+          <span className="text-slate-300 font-medium font-mono">
+            Del (O1–O5): {del.totalScore}/100
+          </span>
         </div>
       </div>
     </div>

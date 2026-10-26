@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateExecutiveBrief } from '@/lib/gemini';
-import { EvaluationResult } from '@/lib/engine/prj-evaluator';
+import { generateTriAgentBrief } from '@/lib/gemini';
+import { CockpitEvaluation } from '@/lib/engine/cockpit-engine';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { evaluation, projectContext } = body as {
-      evaluation?: EvaluationResult;
+      evaluation?: CockpitEvaluation;
       projectContext?: { name?: string; industry?: string; budget?: string };
     };
 
     if (!evaluation || !evaluation.gov || !evaluation.del || !evaluation.quadrant) {
       return NextResponse.json(
-        { error: 'Valid evaluation result payload is required for diagnostic brief generation.' },
+        { error: 'Valid DGRF cockpit evaluation payload is required for diagnostic brief generation.' },
         { status: 400 }
       );
     }
 
-    const brief = await generateExecutiveBrief(evaluation, projectContext);
+    const brief = await generateTriAgentBrief(evaluation, projectContext);
 
     return NextResponse.json(
       {
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('API /api/diagnose error:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error while generating executive clinical brief.' },
+      { error: 'Internal Server Error while generating Tri-Agent clinical brief.' },
       { status: 500 }
     );
   }
