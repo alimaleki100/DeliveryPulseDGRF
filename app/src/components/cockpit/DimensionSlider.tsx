@@ -5,32 +5,14 @@ import {
   GovernanceMode,
   ProjectScores,
   ProductScores,
-  PROJECT_D1,
-  PROJECT_D2,
-  PROJECT_D3,
-  PROJECT_D4,
-  PROJECT_D5,
-  PROJECT_O1,
-  PROJECT_O2,
-  PROJECT_O3,
-  PROJECT_O4,
-  PROJECT_O5,
-  PRODUCT_G1,
-  PRODUCT_G2,
-  PRODUCT_G3,
-  PRODUCT_G4,
-  PRODUCT_G5,
-  PRODUCT_P1,
-  PRODUCT_P2,
-  PRODUCT_P3,
-  PRODUCT_P4,
-  PRODUCT_P5,
   DimensionDef,
+  getDimensionsForEvaluation,
 } from '@/lib/engine/dual-mode-engine';
 import { ShieldAlert, Layers, Activity, AlertTriangle, Zap, Check } from 'lucide-react';
 
 interface DimensionSliderProps {
   mode: GovernanceMode;
+  phase: string;
   activePart: 'gov' | 'del';
   onPartChange: (part: 'gov' | 'del') => void;
   projectScores: ProjectScores;
@@ -43,6 +25,7 @@ interface DimensionSliderProps {
 
 export const DimensionSlider: React.FC<DimensionSliderProps> = ({
   mode,
+  phase,
   activePart,
   onPartChange,
   projectScores,
@@ -58,15 +41,29 @@ export const DimensionSlider: React.FC<DimensionSliderProps> = ({
     ? 'Part 1: Structural Governance (PrjGov, D1–D5)'
     : 'Part 1: Strategic Product Governance (PrdGov, G1–G5)';
 
-  const part2Label = isProject
-    ? 'Part 2: Operational Delivery (PrjDel, O1–O5)'
-    : 'Part 2: Operational Traction & Flow (PrdDel, P1–P5)';
+  let part2Label = isProject
+    ? phase === 'preflight'
+      ? 'Part 2: Operational Readiness — Pre-Flight Baseline Audit (P1–P5)'
+      : 'Part 2: Operational Delivery — In-Flight Live Telemetry (O1–O5)'
+    : phase === 'discovery'
+    ? 'Part 2: Operational Traction — Phase 1 Discovery & Validation (P1–P5)'
+    : phase === 'pmf'
+    ? 'Part 2: Operational Traction — Phase 2 PMF & Retention (P1–P5)'
+    : 'Part 2: Operational Traction — Phase 3 Scale & Platform Flow (P1–P5)';
+
+  const currentDimensions = getDimensionsForEvaluation(mode, phase, activePart);
+
+  // Score keys mapped to the 5 dimensions
+  const projectGovKeys: (keyof ProjectScores)[] = ['d1', 'd2', 'd3', 'd4', 'd5'];
+  const projectDelKeys: (keyof ProjectScores)[] = ['o1', 'o2', 'o3', 'o4', 'o5'];
+  const productGovKeys: (keyof ProductScores)[] = ['g1', 'g2', 'g3', 'g4', 'g5'];
+  const productDelKeys: (keyof ProductScores)[] = ['p1', 'p2', 'p3', 'p4', 'p5'];
 
   return (
     <div className="rounded-2xl bg-slate-900/90 border border-slate-800 p-5 sm:p-6 shadow-2xl backdrop-blur-xl">
       {/* Questionnaire Tabs Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800/80 mb-5 gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => onPartChange('gov')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all ${
@@ -98,15 +95,16 @@ export const DimensionSlider: React.FC<DimensionSliderProps> = ({
           </button>
         </div>
 
-        <span className="text-xs text-slate-500 font-mono">
-          {activePart === 'gov' ? 'Vertical Y-Axis (0–100)' : 'Horizontal X-Axis (0–100)'}
-        </span>
+        <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Interactive Radio-Cards · Discrete Criteria</span>
+        </div>
       </div>
 
-      {/* Nonlinear Penalty Warning Banner */}
+      {/* Dynamic Penalty Warning Banner */}
       {penaltyActive && (
-        <div className="mb-6 p-4 rounded-xl bg-rose-950/70 border border-rose-500/60 flex items-start gap-3.5 text-rose-200 animate-fadeIn shadow-lg">
-          <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+        <div className="mb-6 p-4 rounded-xl bg-rose-950/40 border border-rose-500/50 flex items-start gap-3 shadow-lg shadow-rose-950/20 animate-in fade-in duration-300">
+          <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
           <div className="text-xs">
             <span className="font-bold uppercase tracking-wider text-rose-300 block mb-1">
               Nonlinear Interaction Penalty Triggered
@@ -120,43 +118,41 @@ export const DimensionSlider: React.FC<DimensionSliderProps> = ({
 
       {/* Dimension Items List */}
       <div className="space-y-6">
-        {isProject ? (
-          activePart === 'gov' ? (
-            <>
-              {renderDimensionBlock(PROJECT_D1, projectScores.d1, (v) => onProjectScoreChange('d1', v))}
-              {renderDimensionBlock(PROJECT_D2, projectScores.d2, (v) => onProjectScoreChange('d2', v))}
-              {renderDimensionBlock(PROJECT_D3, projectScores.d3, (v) => onProjectScoreChange('d3', v))}
-              {renderDimensionBlock(PROJECT_D4, projectScores.d4, (v) => onProjectScoreChange('d4', v))}
-              {renderDimensionBlock(PROJECT_D5, projectScores.d5, (v) => onProjectScoreChange('d5', v))}
-            </>
-          ) : (
-            <>
-              {renderDimensionBlock(PROJECT_O1, projectScores.o1, (v) => onProjectScoreChange('o1', v))}
-              {renderDimensionBlock(PROJECT_O2, projectScores.o2, (v) => onProjectScoreChange('o2', v))}
-              {renderDimensionBlock(PROJECT_O3, projectScores.o3, (v) => onProjectScoreChange('o3', v))}
-              {renderDimensionBlock(PROJECT_O4, projectScores.o4, (v) => onProjectScoreChange('o4', v))}
-              {renderDimensionBlock(PROJECT_O5, projectScores.o5, (v) => onProjectScoreChange('o5', v))}
-            </>
-          )
-        ) : (
-          activePart === 'gov' ? (
-            <>
-              {renderDimensionBlock(PRODUCT_G1, productScores.g1, (v) => onProductScoreChange('g1', v))}
-              {renderDimensionBlock(PRODUCT_G2, productScores.g2, (v) => onProductScoreChange('g2', v))}
-              {renderDimensionBlock(PRODUCT_G3, productScores.g3, (v) => onProductScoreChange('g3', v))}
-              {renderDimensionBlock(PRODUCT_G4, productScores.g4, (v) => onProductScoreChange('g4', v))}
-              {renderDimensionBlock(PRODUCT_G5, productScores.g5, (v) => onProductScoreChange('g5', v))}
-            </>
-          ) : (
-            <>
-              {renderDimensionBlock(PRODUCT_P1, productScores.p1, (v) => onProductScoreChange('p1', v))}
-              {renderDimensionBlock(PRODUCT_P2, productScores.p2, (v) => onProductScoreChange('p2', v))}
-              {renderDimensionBlock(PRODUCT_P3, productScores.p3, (v) => onProductScoreChange('p3', v))}
-              {renderDimensionBlock(PRODUCT_P4, productScores.p4, (v) => onProductScoreChange('p4', v))}
-              {renderDimensionBlock(PRODUCT_P5, productScores.p5, (v) => onProductScoreChange('p5', v))}
-            </>
-          )
-        )}
+        {currentDimensions.map((dim, idx) => {
+          if (isProject) {
+            if (activePart === 'gov') {
+              const key = projectGovKeys[idx];
+              return renderDimensionBlock(
+                dim,
+                projectScores[key],
+                (v) => onProjectScoreChange(key, v)
+              );
+            } else {
+              const key = projectDelKeys[idx];
+              return renderDimensionBlock(
+                dim,
+                projectScores[key],
+                (v) => onProjectScoreChange(key, v)
+              );
+            }
+          } else {
+            if (activePart === 'gov') {
+              const key = productGovKeys[idx];
+              return renderDimensionBlock(
+                dim,
+                productScores[key],
+                (v) => onProductScoreChange(key, v)
+              );
+            } else {
+              const key = productDelKeys[idx];
+              return renderDimensionBlock(
+                dim,
+                productScores[key],
+                (v) => onProductScoreChange(key, v)
+              );
+            }
+          }
+        })}
       </div>
     </div>
   );

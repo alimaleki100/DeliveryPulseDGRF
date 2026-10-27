@@ -3,31 +3,27 @@
  * 
  * Implements:
  * - Step 1: Governance Mode Selection ('project' | 'product')
- * - Step 2: Lifecycle Phase Calibration (4 phases per mode)
- * - Step 3: Interactive Questionnaires (D1-D5 & O1-O5 for Project; G1-G5 & P1-P5 for Product)
+ * - Step 2: Lifecycle Phase Calibration (Dynamic 2 Project Phases vs. 3 Product Phases)
+ * - Step 3: Interactive Questionnaires (Dynamic Re-routing per Phase)
  * - Step 4: Real-Time Calculation & Nonlinear Penalty Engines:
  *   Project Penalty: If (D1 === 25 && D2 >= 13) { PrjGov = Math.min(100, rawPrjGov + 10); }
- *   Product Penalty: If (P1 === 25 && P4 >= 14) { PrdDel = Math.min(100, rawPrdDel + 12); } // Blind Leaky Bucket Penalty
- * - Quadrants:
- *   Project: Q1: Systemic Fragility | Q2: Fragile Governance | Q3: Resilient Equilibrium | Q4: Execution Constraint
- *   Product: Q1: Death Spiral | Q2: Zombie Product | Q3: Product-Led Engine | Q4: Platform Bottleneck
+ *   Product Penalty:
+ *     Discovery: If (P1 === 25 && P3 >= 14) { PrdDel = Math.min(100, rawPrdDel + 12); }
+ *     PMF: If (P1 === 25 && P4 >= 14) { PrdDel = Math.min(100, rawPrdDel + 12); } // Blind Leaky Bucket
+ *     Scale: If (P1 === 25 && P3 >= 14) { PrdDel = Math.min(100, rawPrdDel + 12); }
+ * 
+ * Quadrants:
+ * - Project: Q1: Systemic Fragility | Q2: Fragile Governance | Q3: Resilient Equilibrium | Q4: Execution Constraint
+ * - Product: Q1: Death Spiral | Q2: Zombie Product | Q3: Product-Led Engine | Q4: Platform Bottleneck
  * 
  * Author: Ali Maleki (MBA, PMP)
  */
 
 export type GovernanceMode = 'project' | 'product';
 
-export type ProjectPhase =
-  | 'inception'
-  | 'procurement'
-  | 'execution'
-  | 'cutover';
+export type ProjectPhase = 'preflight' | 'live';
 
-export type ProductPhase =
-  | 'discovery'
-  | 'pmf'
-  | 'scale'
-  | 'maturity';
+export type ProductPhase = 'discovery' | 'pmf' | 'scale';
 
 export interface PhaseDefinition {
   id: string;
@@ -38,55 +34,37 @@ export interface PhaseDefinition {
 
 export const PROJECT_PHASES: PhaseDefinition[] = [
   {
-    id: 'inception',
-    name: 'Inception & Chartering',
-    subtitle: 'Phase 1',
-    focus: 'Sponsor mandate & scope baseline definition',
+    id: 'preflight',
+    name: 'Pre-Flight Scoping (PrjPreFlight)',
+    subtitle: 'Phase 0',
+    focus: 'Mandate clarity, vendor contracting structure, baseline ring-fencing, and architectural boundary definition before major capital commitment.',
   },
   {
-    id: 'procurement',
-    name: 'Procurement & Architecture',
-    subtitle: 'Phase 2',
-    focus: 'Vendor terms, milestone escrow, technical architecture & debt',
-  },
-  {
-    id: 'execution',
-    name: 'Mid-Flight Execution / Build',
-    subtitle: 'Phase 3',
-    focus: 'Change-order churn, sprint velocity, burn rate vs. EVM',
-  },
-  {
-    id: 'cutover',
-    name: 'Integration & Cutover / UAT',
-    subtitle: 'Phase 4',
-    focus: 'Defect backlogs, operational readiness, stakeholder panic mitigation',
+    id: 'live',
+    name: 'In-Flight / Live Delivery (PrjLive)',
+    subtitle: 'Active Delivery',
+    focus: 'Observed change discipline, schedule & burn drift, regression defects, and stakeholder friction during active delivery.',
   },
 ];
 
 export const PRODUCT_PHASES: PhaseDefinition[] = [
   {
     id: 'discovery',
-    name: '0-to-1 Discovery & Validation',
-    subtitle: 'Horizon 1',
-    focus: 'Problem-solution fit, discovery cadence, roadmap flexibility',
+    name: 'Phase 1: Discovery & 0-to-1 Validation',
+    subtitle: 'Phase 1',
+    focus: 'Problem-solution validation, customer interview cadence, pivot speed, and assumption-to-evidence ratio.',
   },
   {
     id: 'pmf',
-    name: 'Product-Market Fit & Early Traction',
-    subtitle: 'Horizon 2',
-    focus: 'Retention curves, cohort churn, feature bloat prevention',
+    name: 'Phase 2: Product-Market Fit (PMF) & Retention',
+    subtitle: 'Phase 2',
+    focus: 'Cohort retention curves, core funnel activation, user churn, and value stickiness before scaling.',
   },
   {
     id: 'scale',
-    name: 'Scale & Market Expansion',
-    subtitle: 'Horizon 3',
-    focus: 'Unit economics, CAC/LTV, cross-team coupling, cognitive overload',
-  },
-  {
-    id: 'maturity',
-    name: 'Maturity & Architectural Debt',
-    subtitle: 'Horizon 4',
-    focus: 'Platform refactoring, legacy drag, growth plateau stabilization',
+    name: 'Phase 3: Scale & Expansion',
+    subtitle: 'Phase 3',
+    focus: 'Unit economics (LTV/CAC), CI/CD lead time, multi-team cognitive load, and architectural scalability.',
   },
 ];
 
@@ -108,9 +86,9 @@ export interface DimensionDef<T extends number = number> {
   options: DimensionOption<T>[];
 }
 
-// ==========================================
-// A. PROJECT MODE DIMENSIONS (D1-D5, O1-O5)
-// ==========================================
+// =========================================================================
+// 1. ENTERPRISE PROJECT MODE: PART 1 STRUCTURAL GOVERNANCE (PrjGov, D1–D5)
+// =========================================================================
 
 export const PROJECT_D1: DimensionDef<0 | 8 | 16 | 25> = {
   code: 'D1',
@@ -118,74 +96,74 @@ export const PROJECT_D1: DimensionDef<0 | 8 | 16 | 25> = {
   category: 'gov',
   maxPoints: 25,
   weightLabel: '25 pts',
-  focusArea: 'Executive Sponsorship & Single-Point Accountability',
+  focusArea: 'Sponsorship & Decision Latency',
   options: [
     {
       value: 0,
       level: 0,
       label: 'Single Accountable Executive',
       description: 'Single accountable executive with full budget and unilateral veto power.',
-      criteria: 'Decisions resolved within 24 hours. Zero consensus committee vetoes.',
+      criteria: 'Weekly steering cadence with immediate decision turnaround on all escalated blockers.',
     },
     {
       value: 8,
       level: 1,
-      label: 'Clear Sponsor & Escalation',
-      description: 'Clear sponsor, weekly cadence, structured escalation pathways.',
-      criteria: 'Standard escalation latency < 3 business days; clear operational charter.',
+      label: 'Clear Sponsor with Escalation Cadence',
+      description: 'Clear sponsor, weekly cadence, structured escalation pathways with documented sign-offs.',
+      criteria: 'Decisions resolved within 3-5 business days; minor cross-functional consensus friction.',
     },
     {
       value: 16,
       level: 2,
-      label: 'Diffuse Steering Committee',
+      label: 'Steering Committee / Diffuse Authority',
       description: 'Steering committee with diffuse accountability; deferred decisions and political compromise.',
-      criteria: 'Decisions stalled in committees for 2-4 weeks; contradictory scope compromises.',
+      criteria: 'Decisions require multi-departmental consensus; critical blockers delayed by >2 weeks.',
     },
     {
       value: 25,
       level: 3,
-      label: 'Absent / Paralyzed Sponsor',
-      description: 'Absent/paralyzed sponsor; multi-committee gridlock; rogue departmental decisions.',
-      criteria: 'Complete paralysis; architectural decisions deferred indefinitely; fear of blame.',
+      label: 'Absentee / Paralyzed Sponsor',
+      description: 'Absent or paralyzed sponsor; multi-committee gridlock; rogue unilateral team decisions.',
+      criteria: 'Steering meetings canceled; no single authority can approve scope changes or release contingency.',
     },
   ],
 };
 
 export const PROJECT_D2: DimensionDef<0 | 7 | 13 | 20> = {
   code: 'D2',
-  name: 'Procurement Architecture & Vendor Risk',
+  name: 'Procurement Architecture & Vendor Risk Allocation',
   category: 'gov',
   maxPoints: 20,
   weightLabel: '20 pts',
-  focusArea: 'Contractual Alignment & Risk Allocation',
+  focusArea: 'Contract Structure & Vendor Alignment',
   options: [
     {
       value: 0,
       level: 0,
-      label: 'Outcome-Aligned / Shared Risk',
-      description: 'Outcome-aligned / shared-risk milestone contract with defect escrow.',
-      criteria: 'Shared risk-reward commercial model; skin-in-the-game vendor incentives.',
+      label: 'Outcome-Aligned / Shared-Risk Contract',
+      description: 'Outcome-aligned / shared-risk milestone contract with escrowed performance deliverables.',
+      criteria: 'Vendor margin tied directly to working production capabilities and acceptance criteria.',
     },
     {
       value: 7,
       level: 1,
       label: 'Capped T&M with Quality Gates',
-      description: 'Capped T&M with quality gate sign-offs and spend burn ceilings.',
-      criteria: 'Vendor delivers under periodic deliverable review with burn rate boundaries.',
+      description: 'Capped Time & Materials with strict quality gate sign-offs and clear milestone thresholds.',
+      criteria: 'Not-to-exceed ceiling with mandatory architectural reviews before billing increments.',
     },
     {
       value: 13,
       level: 2,
-      label: 'T&M without Scope Ceiling',
-      description: 'Time & Materials without scope ceiling; vendor friction and frequent change requests.',
-      criteria: 'Vendor disputes sprint items; change-order friction consumes 20%+ of time.',
+      label: 'Open T&M Without Scope Ceiling',
+      description: 'Time & Materials without scope ceiling; vendor friction and misaligned commercial incentives.',
+      criteria: 'Invoicing based solely on developer hours logged rather than verified software deliverables.',
     },
     {
       value: 20,
       level: 3,
-      label: 'Predatory Cost-Plus / Lock-in',
-      description: 'Cost-plus or open T&M; vendor profit incentive tied directly to delays and headcounts.',
-      criteria: 'Vendor replaces senior architects with junior staff; billing continues regardless of delays.',
+      label: 'Adversarial Cost-Plus / Uncapped Drag',
+      description: 'Cost-plus or open T&M; vendor profit incentive tied directly to delays and scope churn.',
+      criteria: 'Active legal disputes over change requests; vendor withholding key IP or senior resources.',
     },
   ],
 };
@@ -196,35 +174,35 @@ export const PROJECT_D3: DimensionDef<0 | 7 | 14 | 20> = {
   category: 'gov',
   maxPoints: 20,
   weightLabel: '20 pts',
-  focusArea: 'Configuration Control & Baseline Discipline',
+  focusArea: 'Change Control & Scope Baseline',
   options: [
     {
       value: 0,
       level: 0,
       label: 'Zero-Sum Trade-off Governance',
-      description: 'Zero-sum trade-off governance; formal gate for any scope addition (must subtract equal scope).',
-      criteria: 'Strict formal CCB; baseline tracked in version control; scope creep rate < 2%.',
+      description: 'Zero-sum trade-off governance; formal gate for any scope addition requiring scope deletion.',
+      criteria: 'Every new feature addition requires equal descoping or explicit sponsor budget release.',
     },
     {
       value: 7,
       level: 1,
       label: 'Impact Verification Required',
-      description: 'Impact verification required before acceptance; documented cost and schedule trade-offs.',
-      criteria: 'Scope adjustments logged formally; minor variance absorbed within contingency.',
+      description: 'Impact verification required before change acceptance; documented cost/schedule modeling.',
+      criteria: 'CCB meets bi-weekly; proposed changes analyzed for critical path impact before approval.',
     },
     {
       value: 14,
       level: 2,
       label: 'Permissive Change Control',
-      description: 'Permissive change control; scope creep masked as refinement or minor backlog grooming.',
-      criteria: 'Backlog grows 15-25% per quarter without baseline adjustments or capacity additions.',
+      description: 'Permissive change control; scope creep masked as refinement or user story elaboration.',
+      criteria: 'Backlog grows unbounded; sprint commitments broken to accommodate mid-flight requests.',
     },
     {
       value: 20,
       level: 3,
       label: 'Uncontrolled Backdoor Creep',
-      description: 'Uncontrolled backdoor creep; political feature insertions without budget or timeline adjustment.',
-      criteria: 'Requirements churn exceeds 40%; teams build contradictory features simultaneously.',
+      description: 'Uncontrolled backdoor creep; political feature insertions directly from stakeholders without budget.',
+      criteria: 'No baseline exists; engineering accepts direct offline tasks from executive sponsors.',
     },
   ],
 };
@@ -235,35 +213,35 @@ export const PROJECT_D4: DimensionDef<0 | 7 | 14 | 20> = {
   category: 'gov',
   maxPoints: 20,
   weightLabel: '20 pts',
-  focusArea: 'Actuarial Capital Buffering & Sunk-Cost Management',
+  focusArea: 'Financial Reserves & Risk Absorption',
   options: [
     {
       value: 0,
       level: 0,
       label: 'Ring-Fenced Reserve (>20%)',
-      description: 'Ring-fenced reserve (>20%) controlled solely by sponsor under strict release criteria.',
-      criteria: 'Reserve intact; Monte Carlo simulation validates 90% confidence envelope.',
+      description: 'Ring-fenced reserve (>20%) controlled solely by sponsor for risk mitigation.',
+      criteria: 'Dedicated financial buffer explicitly allocated for known unknowns and technical volatility.',
     },
     {
       value: 7,
       level: 1,
       label: 'Standard Reserve (10–15%)',
-      description: 'Standard reserve (10–15%) with planned drawdowns against quantified risk registers.',
-      criteria: 'Drawdown logged against quantified risk registers; variance under control.',
+      description: 'Standard reserve (10–15%) with planned drawdowns and structured release criteria.',
+      criteria: 'Reserve tracked against program risk register with periodic actuarial reviews.',
     },
     {
       value: 14,
       level: 2,
       label: 'Depleted Reserve (<5%)',
-      description: 'Depleted reserve (<5%); emergency requests needed for blockers; zero margin for error.',
-      criteria: 'Zero buffer remaining; unforeseen technical debt immediately stalls program funding.',
+      description: 'Depleted reserve (<5%); emergency requests needed for unexpected operational blockers.',
+      criteria: 'Contingency spent on early baseline errors; zero absorption capacity remaining.',
     },
     {
       value: 20,
       level: 3,
-      label: 'Zero Buffer / Optimistic Budget',
-      description: 'Zero buffer; optimistic budgeting; zero contingency absorption; running in structural deficit.',
-      criteria: 'Contractor invoices held back; program relies on emergency corporate capital injections.',
+      label: 'Zero Buffer / Optimistic Budgeting',
+      description: 'Zero buffer; optimistic budgeting; zero contingency absorption capacity.',
+      criteria: 'Budget assumes 100% ideal conditions; any technical defect causes immediate financial overrun.',
     },
   ],
 };
@@ -274,237 +252,438 @@ export const PROJECT_D5: DimensionDef<0 | 5 | 10 | 15> = {
   category: 'gov',
   maxPoints: 15,
   weightLabel: '15 pts',
-  focusArea: 'Modular Insulation & Conways Law',
+  focusArea: 'System Coupling & Technical Architecture',
   options: [
     {
       value: 0,
       level: 0,
-      label: 'Decoupled Modular Services',
-      description: 'Decoupled modular services; isolated interfaces and clear domain boundaries.',
-      criteria: 'Services deploy independently; failures contained within single sub-domain.',
+      label: 'Decoupled Modular Architecture',
+      description: 'Decoupled modular services; isolated interfaces with clear API contracts.',
+      criteria: 'Components can be built, tested, and deployed independently without lockstep coordination.',
     },
     {
       value: 5,
       level: 1,
       label: 'Bounded Monolith with Clean APIs',
-      description: 'Bounded monolith; clean integration points; well-structured codebase layer separation.',
-      criteria: 'Integration testing automated; cross-module regressions < 5% of releases.',
+      description: 'Bounded monolith; clean integration points with documented interface specifications.',
+      criteria: 'Controlled dependencies; well-structured schema boundaries with minimal cross-service leaking.',
     },
     {
       value: 10,
       level: 2,
       label: 'Synchronous Legacy Dependencies',
-      description: 'Synchronous legacy dependencies; cross-system blocking; 2-phase commits across mainframes.',
-      criteria: 'Releases require simultaneous synchronized downtime across 4+ enterprise platforms.',
+      description: 'Synchronous legacy dependencies; cross-system blocking during integration testing.',
+      criteria: 'Testing blocked waiting for mainframe/legacy system availability; brittle shared staging environments.',
     },
     {
       value: 15,
       level: 3,
       label: 'Undocumented Spaghetti Monolith',
-      description: 'Undocumented spaghetti monolith; high coupling; brittle shared databases and circular triggers.',
-      criteria: 'Single line schema change cascades catastrophic outages across unrelated corporate portals.',
+      description: 'Undocumented spaghetti monolith; high coupling; brittle shared databases and zero isolation.',
+      criteria: 'Any code change in module A triggers unpredictable regression outages in unrelated module B.',
     },
   ],
 };
 
-export const PROJECT_O1: DimensionDef<0 | 8 | 16 | 25> = {
+// =========================================================================
+// 2. ENTERPRISE PROJECT MODE: PART 2 OPERATIONAL DELIVERY (PrjDel)
+// =========================================================================
+
+// A. PRE-FLIGHT SCOPING (PrjPreFlight P1–P5)
+export const PROJECT_PREFLIGHT_P1: DimensionDef<0 | 8 | 16 | 25> = {
+  code: 'P1',
+  name: 'Deadline Realism & Estimation Rigor',
+  category: 'del',
+  maxPoints: 25,
+  weightLabel: '25 pts',
+  focusArea: 'Planning Fallacy & Reference Class Forecasting',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: 'Empirical Probabilistic Estimation',
+      description: 'Schedule derived from historical reference class benchmarks and Monte Carlo simulations (P80 confidence).',
+      criteria: 'Quantitative Schedule Risk Analysis (QSRA) report with distribution curves and risk-adjusted milestone dates.',
+    },
+    {
+      value: 8,
+      level: 1,
+      label: 'Parametric Estimation with Benchmarks',
+      description: 'Schedule built using standardized work breakdown structures (WBS) and verified organizational velocity benchmarks.',
+      criteria: 'Documented bottom-up WBS cross-referenced against >= 3 comparable organizational deliveries.',
+    },
+    {
+      value: 16,
+      level: 2,
+      label: 'Optimistic Expert Consensus',
+      description: 'Schedule based on subjective engineer consensus assuming zero external delays and immediate onboarding.',
+      criteria: 'High-level Gantt chart without confidence bounds; dependencies assumed parallel with zero float.',
+    },
+    {
+      value: 25,
+      level: 3,
+      label: 'Mandated Arbitrary Deadline',
+      description: 'Target completion date mandated top-down by marketing or C-suite without feasibility review or architecture consultation.',
+      criteria: 'Delivery date fixed by public corporate press release prior to scoping or architecture sign-off.',
+    },
+  ],
+};
+
+export const PROJECT_PREFLIGHT_P2: DimensionDef<0 | 7 | 13 | 20> = {
+  code: 'P2',
+  name: 'Requirement Maturity & Boundary Definition',
+  category: 'del',
+  maxPoints: 20,
+  weightLabel: '20 pts',
+  focusArea: 'Boundary Definition & Ambiguity Mitigation',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: 'Quantified Acceptance Criteria',
+      description: 'Core functional boundaries explicitly mapped. All critical integrations defined with draft API contracts and NFR SLAs.',
+      criteria: 'Formal specification with Given-When-Then criteria; latency, throughput, and security SLAs signed.',
+    },
+    {
+      value: 7,
+      level: 1,
+      label: 'Detailed User Story Epics',
+      description: 'Comprehensive functional backlog with clear user persona boundaries and agreed out-of-scope declarations.',
+      criteria: 'Jira/Azure DevOps epic backlog with mapped dependencies and signed business requirement sign-offs.',
+    },
+    {
+      value: 13,
+      level: 2,
+      label: 'Vague Functional Ambiguity',
+      description: 'Requirements written as high-level narrative statements ("seamless user onboarding") without objective criteria.',
+      criteria: 'High-level PRD with ambiguous metrics; statements containing "to be determined in sprint 1".',
+    },
+    {
+      value: 20,
+      level: 3,
+      label: 'Unbounded Conceptual Aspiration',
+      description: 'Project exists merely as an idea or pitch deck. Scope boundaries completely undefined; stakeholders disagree on goals.',
+      criteria: 'Documentation consists solely of executive presentations; zero functional boundary definitions.',
+    },
+  ],
+};
+
+export const PROJECT_PREFLIGHT_P3: DimensionDef<0 | 7 | 14 | 20> = {
+  code: 'P3',
+  name: 'Budget Fidelity & Cost Estimation Model',
+  category: 'del',
+  maxPoints: 20,
+  weightLabel: '20 pts',
+  focusArea: 'Parametric Cost Modeling & Bidding Rigor',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: 'Independent Cost Estimate (ICE)',
+      description: 'Parametric cost modeling with bottom-up engineering validation and independent financial audit.',
+      criteria: 'Independent Cost Estimate (ICE) report prepared; vendor bids verified against market averages.',
+    },
+    {
+      value: 7,
+      level: 1,
+      label: 'Structured Budget Model',
+      description: 'Standard estimation with verified vendor rate cards, infrastructure sizing models, and licensing audits.',
+      criteria: 'Cost model accounts for developer licenses, staging environments, and integration support costs.',
+    },
+    {
+      value: 14,
+      level: 2,
+      label: 'Top-Down Capital Allocation',
+      description: 'Fixed funding envelope assigned by finance committee without architectural feasibility analysis.',
+      criteria: 'Scope forced to fit predetermined budget figure; critical non-functional testing descoped to meet price.',
+    },
+    {
+      value: 20,
+      level: 3,
+      label: "Winner's Curse Bidding",
+      description: 'Selection of lowest unvetted vendor bid with unrealistic cost assumptions to secure budget sign-off.',
+      criteria: 'Vendor won via aggressively underpriced bid; clear expectation of aggressive change order claims.',
+    },
+  ],
+};
+
+export const PROJECT_PREFLIGHT_P4: DimensionDef<0 | 7 | 14 | 20> = {
+  code: 'P4',
+  name: 'Definition of Done & Verification Tooling',
+  category: 'del',
+  maxPoints: 20,
+  weightLabel: '20 pts',
+  focusArea: 'Automated Quality Baselines & DoD',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: 'Automated DoD Enforcement',
+      description: 'CI/CD test gates, automated regression, and security scanning pre-configured before sprint 1.',
+      criteria: 'Definition of Done includes automated code coverage (>80%), SonarQube quality gate, and vulnerability scan.',
+    },
+    {
+      value: 7,
+      level: 1,
+      label: 'Documented Quality Standards',
+      description: 'Clear sign-off criteria and regression thresholds agreed between sponsor and engineering leads.',
+      criteria: 'Documented Definition of Ready (DoR) and Definition of Done (DoD) embedded in developer guidelines.',
+    },
+    {
+      value: 14,
+      level: 2,
+      label: 'Informal Acceptance Gates',
+      description: 'Subjective manual sign-offs without automated verification tooling or baseline test environments.',
+      criteria: 'No test environments provisioned; quality assurance relies on manual tester walkthroughs.',
+    },
+    {
+      value: 20,
+      level: 3,
+      label: 'Zero Verification Architecture',
+      description: 'No test strategy, no DoD; quality deferred until post-launch UAT or production cutover.',
+      criteria: 'Testing planned as a 4-week manual phase at the end of an 18-month waterfall cycle.',
+    },
+  ],
+};
+
+export const PROJECT_PREFLIGHT_P5: DimensionDef<0 | 5 | 10 | 15> = {
+  code: 'P5',
+  name: 'Dedicated Team & Resource Ring-Fencing',
+  category: 'del',
+  maxPoints: 15,
+  weightLabel: '15 pts',
+  focusArea: 'Resource Ring-Fencing vs Phantom Team Fallacy',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: '100% Dedicated Core Team',
+      description: 'Key architects and delivery leads ring-fenced exclusively for initiative duration.',
+      criteria: 'Named senior staff assigned 100% FTE; sponsor contractually guarantees zero operational poaching.',
+    },
+    {
+      value: 5,
+      level: 1,
+      label: 'Substantially Dedicated (>80%)',
+      description: 'Core team 80%+ dedicated with minimal operational maintenance overlap.',
+      criteria: 'Key contributors protected by formal SLA; backfill resources in place for routine support duties.',
+    },
+    {
+      value: 10,
+      level: 2,
+      label: 'Part-Time Allocation (<50%)',
+      description: 'Key contributors split across 3+ parallel enterprise programs with competing priorities.',
+      criteria: 'Core architect allocated at 25% FTE; delivery leads constantly pulled into operational outages.',
+    },
+    {
+      value: 15,
+      level: 3,
+      label: 'Phantom Team Fallacy',
+      description: 'Team not hired or allocated; staffing dependent on speculative vendor recruitment.',
+      criteria: 'Project kicked off without staff; critical roles unstaffed 60 days post-charter approval.',
+    },
+  ],
+};
+
+// B. IN-FLIGHT / LIVE DELIVERY (PrjLive O1–O5)
+export const PROJECT_LIVE_O1: DimensionDef<0 | 8 | 16 | 25> = {
   code: 'O1',
   name: 'Schedule Drift & Critical Path Delay',
   category: 'del',
   maxPoints: 25,
   weightLabel: '25 pts',
-  focusArea: 'Critical Path Analysis & Earned Schedule',
+  focusArea: 'Schedule Variance & Milestone Slippage',
   options: [
     {
       value: 0,
       level: 0,
-      label: 'On Schedule (SPI >= 1.0)',
-      description: 'Milestone delivered on or ahead of critical path; zero variance in past 90 days.',
-      criteria: 'SPI >= 1.0; deliverables completed on or ahead of baseline schedule.',
+      label: 'Milestones On or Ahead of Baseline',
+      description: 'Milestones on or ahead of critical path baseline; zero float degradation.',
+      criteria: 'All primary releases delivered within planned window; SPI >= 1.0; buffer intact.',
     },
     {
       value: 8,
       level: 1,
-      label: 'Minor Non-Critical Slip (<10%)',
-      description: 'Minor non-critical slip (<10%); buffer absorbs variance without affecting release date.',
-      criteria: 'SPI in [0.90, 0.99]; critical path milestone dates unaffected.',
+      label: 'Minor Milestone Drift (<10%)',
+      description: 'Minor milestone slip (<10%), absorbed by non-critical path buffers with clear recovery.',
+      criteria: 'SPI 0.90–0.99; critical path uncompromised; corrective actions scheduled in upcoming sprint.',
     },
     {
       value: 16,
       level: 2,
-      label: 'Critical Path Slip (10–25%)',
-      description: 'Critical path delayed 10–25%; key testing compressed to preserve artificial launch dates.',
-      criteria: 'SPI in [0.75, 0.89]; release dates pushed back by 1-2 months; testing phase crunched.',
+      label: 'Moderate Critical Path Slip (10–25%)',
+      description: 'Moderate critical path drift (10–25%); milestone commitments slipping into subsequent quarters.',
+      criteria: 'SPI 0.75–0.89; critical path tasks delayed; non-critical float completely exhausted.',
     },
     {
       value: 25,
       level: 3,
-      label: 'Runaway Critical Slip (>30%)',
-      description: 'Severe runaway slip (>30%); no credible delivery baseline; milestone dates fictional.',
-      criteria: 'SPI < 0.70; project timeline doubled without end-to-end integration proof.',
+      label: 'Severe Schedule Collapse (>25%)',
+      description: 'Severe schedule collapse (>25% slip); critical path blocked indefinitely by unaddressed technical roadblocks.',
+      criteria: 'SPI < 0.75; launch target postponed repeatedly; release dates omitted from executive status reports.',
     },
   ],
 };
 
-export const PROJECT_O2: DimensionDef<0 | 7 | 13 | 20> = {
+export const PROJECT_LIVE_O2: DimensionDef<0 | 7 | 13 | 20> = {
   code: 'O2',
   name: 'Budget Burn Velocity vs. Earned Value',
   category: 'del',
   maxPoints: 20,
   weightLabel: '20 pts',
-  focusArea: 'Cost Performance Index (CPI) & Capital Efficiency',
+  focusArea: 'Cost Performance Index (CPI) & Capital Depletion',
   options: [
     {
       value: 0,
       level: 0,
-      label: 'Optimal Cost Efficiency (CPI >= 1.0)',
-      description: 'Optimal cost efficiency (CPI >= 1.0); capital expenditure tracks value dollar-for-dollar.',
-      criteria: 'CPI >= 1.0; burn rate linear and aligned with verified functional progress.',
+      label: 'CPI >= 1.0 (Value Matches Capital)',
+      description: 'CPI >= 1.0; capital burn aligns directly with verified earned business value.',
+      criteria: 'Financial expenditure tracks budget curve; zero unbudgeted contractor expansion.',
     },
     {
       value: 7,
       level: 1,
-      label: 'Controlled Variance (CPI 0.90–0.99)',
-      description: 'Controlled variance (CPI 0.90–0.99); within planned tolerances and contractual caps.',
-      criteria: 'Budget burn tracks planned curves within 5% tolerance.',
+      label: 'CPI 0.90–0.99 (Minor Cost Variance)',
+      description: 'CPI 0.90–0.99; slight cost variance within planned contingency threshold.',
+      criteria: 'Cost variance accounted for by early hardware purchases or planned overtime.',
     },
     {
       value: 13,
       level: 2,
-      label: 'Accelerating Drain (CPI 0.75–0.89)',
-      description: 'Capital drain accelerating (CPI 0.75–0.89); overtime and contractor overhead eating margins.',
-      criteria: 'Overtime and emergency vendor augmentation inflating monthly spend by 25%+.',
+      label: 'CPI 0.75–0.89 (Burn Outpacing Delivery)',
+      description: 'CPI 0.75–0.89; burn rate outpacing milestone delivery; contingency drawn down prematurely.',
+      criteria: 'Substantial spending on contractor bench time without corresponding software feature completion.',
     },
     {
       value: 20,
       level: 3,
-      label: 'Runaway Burn / Overrun (CPI < 0.75)',
-      description: 'Runaway burn (CPI < 0.75); capital depleted without working software capability.',
-      criteria: 'Emergency capital requests required every quarter; burn rate decoupled from value.',
+      label: 'CPI < 0.75 (Runaway Capital Depletion)',
+      description: 'CPI < 0.75; runaway burn velocity with minimal delivered software capability.',
+      criteria: 'More than 70% of budget exhausted with less than 30% of functional requirements delivered.',
     },
   ],
 };
 
-export const PROJECT_O3: DimensionDef<0 | 7 | 14 | 20> = {
+export const PROJECT_LIVE_O3: DimensionDef<0 | 7 | 14 | 20> = {
   code: 'O3',
   name: 'Defect Density & Unplanned Regression',
   category: 'del',
   maxPoints: 20,
   weightLabel: '20 pts',
-  focusArea: 'Quality Kinetics & Software Reliability',
+  focusArea: 'Software Quality & Unplanned Rework',
   options: [
     {
       value: 0,
       level: 0,
-      label: 'Zero Sev-1/Sev-2 Blockers',
-      description: 'Zero Sev-1/Sev-2 blockers; automated CI/CD passing >85%; zero open regressions.',
-      criteria: 'Continuous delivery active; defect arrival rate < resolution rate in all sprints.',
+      label: 'Zero Sev-1 Defects (>95% Pass Rate)',
+      description: 'Zero critical (Sev-1) defects; automated regression suite pass rate >95%.',
+      criteria: 'Rework consumes <10% of total engineering sprint capacity; clean deployment pipelines.',
     },
     {
       value: 7,
       level: 1,
       label: 'Manageable Defect Backlog',
-      description: 'Manageable defect backlog; mean time to resolve (MTTR) < 48 hrs; release gates respected.',
-      criteria: 'Mean time to resolve < 48 hours; release gates enforced cleanly.',
+      description: 'Manageable defect backlog; rapid turnaround on Sev-2 defects (<48 hours).',
+      criteria: 'Rework consumes 10–20% of capacity; zero architectural showstoppers in staging.',
     },
     {
       value: 14,
       level: 2,
-      label: 'Defect Inflow Exceeds Fixes',
-      description: 'Defect inflow exceeds resolution; testing cycles continually delayed by unstable builds.',
-      criteria: 'Sev-1/Sev-2 defects open for > 3 weeks; regression test cycle requires manual testing.',
+      label: 'Escalating Regression Escapes',
+      description: 'Growing defect debt; regression escapes disrupting test environments and slowing testing.',
+      criteria: 'Rework consumes 25–40% of sprint capacity; bug count growing faster than feature completion.',
     },
     {
       value: 20,
       level: 3,
-      label: 'Terminal Defect Spiral',
-      description: 'Terminal defect spiral; bug fixes trigger multiple regressions; build constantly broken.',
-      criteria: 'Deploying bug fixes triggers two new bugs elsewhere; UAT rejected repeatedly.',
+      label: 'Defect Explosion / Paralyzed Testing',
+      description: 'Defect explosion; Sev-1 blockers paralyzing test cycles; rollback failures in pre-prod.',
+      criteria: 'Engineering capacity consumed 100% by emergency hotfixes; releases routinely aborted.',
     },
   ],
 };
 
-export const PROJECT_O4: DimensionDef<0 | 7 | 14 | 20> = {
+export const PROJECT_LIVE_O4: DimensionDef<0 | 7 | 14 | 20> = {
   code: 'O4',
   name: 'Team Cognitive Load & Key-Person Risk',
   category: 'del',
   maxPoints: 20,
   weightLabel: '20 pts',
-  focusArea: 'Team Topologies & Engineering Sustainability',
+  focusArea: 'Work-in-Progress & Team Attrition Risk',
   options: [
     {
       value: 0,
       level: 0,
-      label: 'High Psychological Safety',
-      description: 'High psychological safety; sustainable 40-hr pace; zero key-person lock; low turnover.',
-      criteria: 'Sprint velocity stable; sustainable 40-hr pace; team NPS > 60.',
+      label: 'Sustainable Pace & Redundancy',
+      description: 'Sustainable team pace; cross-trained redundancies across all critical architectural modules.',
+      criteria: 'Team turnover <5%; bus factor >3 across all repositories; zero emergency weekend shifts.',
     },
     {
       value: 7,
       level: 1,
-      label: 'Manageable Release Crunch',
-      description: 'Manageable release crunch; minor turnover within norms; clear team boundaries.',
-      criteria: 'Turnover in line with industry average (<10%); strong team cohesion.',
+      label: 'Controlled Release Overtime',
+      description: 'Manageable overtime during release windows; key-person backups identified and shadowing.',
+      criteria: 'Occasional heroics during major milestones followed by compensatory time off; low burnout risk.',
     },
     {
       value: 14,
       level: 2,
-      label: 'Chronic Heroic Overtime',
-      description: 'Chronic overtime; delivery depends entirely on 2–3 heroic architects working weekends.',
-      criteria: 'Lead engineers express severe frustration; key person dependency risk is extreme.',
+      label: 'High Strain / Single Points of Failure',
+      description: 'High cognitive strain; single point of failure (SPOF) on critical integration modules.',
+      criteria: 'Program completely halts if 1 lead engineer is sick; sprint WIP limits routinely exceeded.',
     },
     {
       value: 20,
       level: 3,
-      label: 'Mass Burnout & Departures',
-      description: 'Mass burnout; lead architects departing in protest; delivery paralysis and erased context.',
-      criteria: 'Turnover > 30%; remaining team consists of junior replacements lacking domain context.',
+      label: 'Severe Burnout & Architect Attrition',
+      description: 'Severe team burnout; key architect attrition; knowledge vacuum in core legacy systems.',
+      criteria: 'Lead architect and two senior developers resign mid-sprint; team morale in crisis.',
     },
   ],
 };
 
-export const PROJECT_O5: DimensionDef<0 | 5 | 10 | 15> = {
+export const PROJECT_LIVE_O5: DimensionDef<0 | 5 | 10 | 15> = {
   code: 'O5',
   name: 'Stakeholder Misalignment & Friction',
   category: 'del',
   maxPoints: 15,
   weightLabel: '15 pts',
-  focusArea: 'Organizational Candor & Status Transparency',
+  focusArea: 'Cross-Functional Trust & Escalate Latency',
   options: [
     {
       value: 0,
       level: 0,
-      label: 'Transparent Candor & Trust',
-      description: 'Transparent reporting candor; bad news escalated immediately without reprisal.',
-      criteria: 'Bad news escalated immediately to steering committee without fear of punishment.',
+      label: 'Unified Alignment & Active Trust',
+      description: 'Unified alignment; weekly steering cadence focused on transparent obstacle removal.',
+      criteria: 'Business stakeholders, PMO, and engineering leads operate under shared definitions of success.',
     },
     {
       value: 5,
       level: 1,
-      label: 'Constructive Business Alignment',
-      description: 'Open business-IT alignment; constructive feedback loops; active demo participation.',
-      criteria: 'Stakeholders attend demos; feedback incorporated into next planning cycle.',
+      label: 'Constructive Tension Resolved Rapidly',
+      description: 'Constructive tension resolved through established escalation protocols and transparent demos.',
+      criteria: 'Occasional disagreements over milestone prioritization resolved within weekly governance review.',
     },
     {
       value: 10,
       level: 2,
-      label: 'Blame Culture & Posturing',
-      description: 'Blame culture; legal/procurement CC-ed; risks masked in slides; passive resistance.',
-      criteria: 'Emails cc-ing legal/procurement; status reports selectively omit red risks.',
+      label: 'Departmental Friction & Resistance',
+      description: 'Departmental friction; passive-aggressive resistance from downstream operational units.',
+      criteria: 'Operations team refuses to accept software handover; business users complain about lack of input.',
     },
     {
       value: 15,
       level: 3,
-      label: 'The "Watermelon Effect"',
-      description: '"Watermelon Effect"; green dashboards hiding red engineering reality; mutual litigation threats.',
-      criteria: 'Steering reports show Green until the day before scheduled go-live, then collapse.',
+      label: 'Toxic Governance Breakdown',
+      description: 'Toxic governance breakdown; executive disengagement; active political sabotage.',
+      criteria: 'Steering committee turns into blame allocation sessions; business lines build shadow IT alternatives.',
     },
   ],
 };
 
-// ==========================================
-// B. PRODUCT MODE DIMENSIONS (G1-G5, P1-P5)
-// ==========================================
+// =========================================================================
+// 3. DIGITAL PRODUCT MODE: PART 1 STRATEGIC PRODUCT GOVERNANCE (PrdGov, G1–G5)
+// =========================================================================
 
 export const PRODUCT_G1: DimensionDef<0 | 8 | 16 | 25> = {
   code: 'G1',
@@ -512,7 +691,7 @@ export const PRODUCT_G1: DimensionDef<0 | 8 | 16 | 25> = {
   category: 'gov',
   maxPoints: 25,
   weightLabel: '25 pts',
-  focusArea: 'Outcome-Based Management vs Feature Factory',
+  focusArea: 'Outcome Roadmaps & HiPPO Resistance',
   options: [
     {
       value: 0,
@@ -603,22 +782,22 @@ export const PRODUCT_G3: DimensionDef<0 | 7 | 14 | 20> = {
       value: 7,
       level: 1,
       label: 'Structured Discovery Cadence',
-      description: 'Structured discovery cadence; leadership reviews only major strategic pivots.',
-      criteria: 'Customer research conducted systematically before major roadmap epics.',
+      description: 'Structured discovery cadence; leadership reviews only strategic pivots and metrics.',
+      criteria: 'Teams test hypotheses within agreed product guardrails with monthly reviews.',
     },
     {
       value: 14,
       level: 2,
       label: 'Trio Acts as Ticket-Takers',
-      description: 'Trio acts as ticket-takers; features pre-dictated by business stakeholders; research ad-hoc.',
-      criteria: 'Jira tickets authored by sales or executive sponsors; PM acts as project coordinator.',
+      description: 'Trio acts as ticket-takers; features and UI specifications pre-dictated by stakeholders.',
+      criteria: 'Product managers function as backlog administrators rather than strategic leaders.',
     },
     {
       value: 20,
       level: 3,
-      label: 'Zero Customer Contact',
-      description: 'Complete lack of user contact; development built entirely on internal speculation.',
-      criteria: 'Zero customer interviews in 12 months; "we know what our users need" mentality.',
+      label: 'Complete Lack of User Contact',
+      description: 'Complete lack of user contact; development proceeds entirely without customer validation.',
+      criteria: 'Engineers forbidden from contacting end-users; assumptions masquerade as validated facts.',
     },
   ],
 };
@@ -629,35 +808,35 @@ export const PRODUCT_G4: DimensionDef<0 | 7 | 14 | 20> = {
   category: 'gov',
   maxPoints: 20,
   weightLabel: '20 pts',
-  focusArea: 'Flow Framework & Sustainable Engineering Ratio',
+  focusArea: 'Engineering Health & Refactoring Allocation',
   options: [
     {
       value: 0,
       level: 0,
-      label: 'Dedicated 20%+ Capacity Reserved',
-      description: 'Dedicated 20%+ engineering capacity reserved for tech debt, platform health & reliability.',
-      criteria: 'Refactoring tickets consistently scheduled; defect carryover is low.',
+      label: 'Dedicated 20%+ Tech Debt Capacity',
+      description: 'Dedicated 20%+ engineering capacity permanently reserved for tech debt & reliability.',
+      criteria: 'Refactoring tasks tracked in sprint boards; architecture evolves gracefully.',
     },
     {
       value: 7,
       level: 1,
-      label: 'Continuous Refactoring in Sprints',
-      description: 'Continuous refactoring baked into normal sprint cycles with quarterly hardening milestones.',
-      criteria: 'Automated test coverage > 75%; architecture maintained proactively.',
+      label: 'Continuous Refactoring Baked In',
+      description: 'Continuous refactoring baked into normal sprint cycles with steady debt reduction.',
+      criteria: 'Tech debt treated as first-class backlog items alongside customer features.',
     },
     {
       value: 14,
       level: 2,
       label: 'Tech Debt Continuously Deprioritized',
-      description: 'Tech debt acknowledged but continuously deprioritized to hit aggressive sales release dates.',
-      criteria: 'Refactoring tickets deferred > 6 months; core code becoming increasingly brittle.',
+      description: 'Tech debt acknowledged in retro but continuously deprioritized for urgent sales features.',
+      criteria: 'Deployment lead times growing; test coverage declining below acceptable limits.',
     },
     {
       value: 20,
       level: 3,
       label: 'Critical Architectural Bankruptcy',
-      description: 'Critical architectural bankruptcy; outages during routine deployments; fear of modifying code.',
-      criteria: 'Bugs outnumber feature tickets; >50% of engineering capacity consumed by hotfixes.',
+      description: 'Critical architectural bankruptcy; outages and severe performance drops during routine deployments.',
+      criteria: 'Core platform unstable; developers spend >50% of time patching legacy vulnerabilities.',
     },
   ],
 };
@@ -668,183 +847,541 @@ export const PRODUCT_G5: DimensionDef<0 | 5 | 10 | 15> = {
   category: 'gov',
   maxPoints: 15,
   weightLabel: '15 pts',
-  focusArea: 'Data Privacy & Automated Governance',
+  focusArea: 'Compliance-as-Code & Privacy-by-Design',
   options: [
     {
       value: 0,
       level: 0,
-      label: 'Privacy-by-Design & Automated Gates',
-      description: 'Privacy-by-design & automated compliance checks integrated directly in CI/CD pipeline.',
-      criteria: 'Automated SAST/DAST security scanning; zero compliance release bottlenecks.',
+      label: 'Privacy-by-Design & Automated CI/CD',
+      description: 'Privacy-by-design & automated compliance checks in CI/CD pipeline.',
+      criteria: 'SOC2, GDPR, and data lineage checks enforced automatically on pull requests.',
     },
     {
       value: 5,
       level: 1,
-      label: 'Standard Compliance Review Gate',
-      description: 'Standard legal/compliance gate prior to major releases with predictable sign-off criteria.',
-      criteria: 'Security and compliance reviews completed within standard sprint cadences.',
+      label: 'Standard Compliance Gate Pre-Release',
+      description: 'Standard legal/compliance gate prior to major releases with predictable sign-off times.',
+      criteria: 'Privacy reviews completed within 5 business days with clear mitigation guidelines.',
     },
     {
       value: 10,
       level: 2,
       label: 'Manual Compliance Bottlenecks',
-      description: 'Manual compliance bottlenecks; fear-driven security delays; siloed audit bureaucracy.',
-      criteria: 'Releases held up for weeks in legal/compliance review queues.',
+      description: 'Manual compliance bottlenecks; fear-driven security reviews halting releases for weeks.',
+      criteria: 'Releases held up by opaque security committees with shifting compliance goalposts.',
     },
     {
       value: 15,
       level: 3,
       label: 'Severe Compliance Blindspots',
-      description: 'Severe compliance blindspots; un-sanitized customer data; imminent risk of regulatory halt.',
-      criteria: 'Audit findings unaddressed; customer PII exposed without encryption or audit trail.',
+      description: 'Severe compliance blindspots; risk of legal/regulatory shutdown or data breach fines.',
+      criteria: 'Customer PII unencrypted in test environments; zero regulatory audit readiness.',
     },
   ],
 };
 
-export const PRODUCT_P1: DimensionDef<0 | 8 | 16 | 25> = {
+// =========================================================================
+// 4. DIGITAL PRODUCT MODE: PART 2 OPERATIONAL TRACTION & FLOW (PrdDel)
+// =========================================================================
+
+// A. PHASE 1: DISCOVERY & 0-TO-1 VALIDATION (P1–P5)
+export const PRODUCT_DISC_P1: DimensionDef<0 | 8 | 16 | 25> = {
+  code: 'P1',
+  name: 'Customer Discovery Velocity & Evidence Base',
+  category: 'del',
+  maxPoints: 25,
+  weightLabel: '25 pts',
+  focusArea: 'Discovery Interviews & Customer Evidence',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: '>5 User Discovery Sessions/Week',
+      description: '>5 user discovery sessions/week with structured insight synthesis and rapid hypothesis testing.',
+      criteria: 'Product Trio speaks with customers weekly; insights cataloged in continuous discovery tree.',
+    },
+    {
+      value: 8,
+      level: 1,
+      label: 'Regular Bi-Weekly Interviews',
+      description: 'Regular bi-weekly interviews; feedback directly shapes prototypes and roadmap prioritization.',
+      criteria: 'User feedback documented with clear opportunity-solution trees reviewed monthly.',
+    },
+    {
+      value: 16,
+      level: 2,
+      label: 'Sporadic Ad-Hoc Interviews',
+      description: 'Sporadic ad-hoc interviews; validation happens only after code is already built and deployed.',
+      criteria: 'Interviews conducted once a quarter; team relies on internal proxies rather than real users.',
+    },
+    {
+      value: 25,
+      level: 3,
+      label: 'Zero Customer Contact',
+      description: 'Zero customer contact; product built strictly on internal leadership assumptions and guesses.',
+      criteria: 'No external users have seen prototypes; team building full-stack software blindly.',
+    },
+  ],
+};
+
+export const PRODUCT_DISC_P2: DimensionDef<0 | 7 | 13 | 20> = {
+  code: 'P2',
+  name: 'Experiment Cycle & Pivot Latency',
+  category: 'del',
+  maxPoints: 20,
+  weightLabel: '20 pts',
+  focusArea: 'Hypothesis Testing Speed & Pivot Agility',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: '<1 Week Idea to Validated Test',
+      description: '<1 week from prototype hypothesis to validated test result with real prospective users.',
+      criteria: 'Lightweight smoke tests, landing page tests, or clickable prototypes tested weekly.',
+    },
+    {
+      value: 7,
+      level: 1,
+      label: '2-Week Validation Cycles',
+      description: '2-week validation cycles matching agile sprints with structured quantitative results.',
+      criteria: 'Every major feature assumption backed by an empirical test before production coding begins.',
+    },
+    {
+      value: 13,
+      level: 2,
+      label: '4–6 Week Concept Delays',
+      description: '4–6 week delays to test simple concept validations due to stakeholder sign-off friction.',
+      criteria: 'Hypotheses languish in design committees; slow feedback loops cause engineering idle time.',
+    },
+    {
+      value: 20,
+      level: 3,
+      label: 'Inability to Pivot / Locked Build',
+      description: 'Inability to pivot; teams locked into multi-month build without interim checkpoints.',
+      criteria: 'Management refuses to alter course even when early validation tests fail completely.',
+    },
+  ],
+};
+
+export const PRODUCT_DISC_P3: DimensionDef<0 | 7 | 14 | 20> = {
+  code: 'P3',
+  name: 'Problem-Solution Fit Signal',
+  category: 'del',
+  maxPoints: 20,
+  weightLabel: '20 pts',
+  focusArea: 'Customer Demand Urgency & Pain Severity',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: 'Strong Pull & Urgent Demand',
+      description: 'Strong pull; pilot users actively demand early access and express acute urgency to solve pain.',
+      criteria: 'Users offer letters of intent, pilot prepayments, or unprompted referrals to peers.',
+    },
+    {
+      value: 7,
+      level: 1,
+      label: 'Identifiable Pain Point Confirmed',
+      description: 'Identifiable pain point confirmed; moderate user enthusiasm with willingness to test betas.',
+      criteria: 'Target users acknowledge high frequency of problem and engage regularly with early prototypes.',
+    },
+    {
+      value: 14,
+      level: 2,
+      label: 'Lukewarm Conceptual Interest',
+      description: 'Lukewarm engagement; users express conceptual interest in interviews but do not re-engage.',
+      criteria: 'Pilots stall; users ignore follow-up scheduling and fail to complete test onboarding tasks.',
+    },
+    {
+      value: 20,
+      level: 3,
+      label: 'Total Market Apathy',
+      description: 'Total market apathy; target users do not recognize or experience the problem being solved.',
+      criteria: 'Customer acquisition conversion near zero; prospects state problem is non-existent or trivial.',
+    },
+  ],
+};
+
+export const PRODUCT_DISC_P4: DimensionDef<0 | 7 | 14 | 20> = {
+  code: 'P4',
+  name: 'Prototype Fidelity & Technical Waste',
+  category: 'del',
+  maxPoints: 20,
+  weightLabel: '20 pts',
+  focusArea: 'Frugal Experimentation vs Over-Engineering',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: 'Low-Code / Clickable Smoke Tests',
+      description: 'Low-code / Figma / clickable smoke tests before committing production engineering resources.',
+      criteria: 'Zero production code written until demand validation and willingness-to-pay are confirmed.',
+    },
+    {
+      value: 7,
+      level: 1,
+      label: 'Lightweight Throwaway Prototypes',
+      description: 'Lightweight throwaway prototypes designed to answer specific high-risk assumptions.',
+      criteria: 'Prototypes explicitly built with minimal architecture and discarded after validation test.',
+    },
+    {
+      value: 14,
+      level: 2,
+      label: 'Over-Architected Full-Stack Builds',
+      description: 'Over-architected full-stack builds for unvalidated hypotheses; wasted development time.',
+      criteria: 'Engineers spend weeks designing distributed databases for features that users reject on day 1.',
+    },
+    {
+      value: 20,
+      level: 3,
+      label: 'Enterprise Infrastructure Prematurely Built',
+      description: 'Enterprise infrastructure built before acquiring a single validated user or active prospect.',
+      criteria: 'Months spent on multi-region Kubernetes clusters and microservices for an unproven concept.',
+    },
+  ],
+};
+
+export const PRODUCT_DISC_P5: DimensionDef<0 | 5 | 10 | 15> = {
+  code: 'P5',
+  name: 'Team Validation Alignment',
+  category: 'del',
+  maxPoints: 15,
+  weightLabel: '15 pts',
+  focusArea: 'Cross-Functional Discovery Clarity',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: 'Unified Trio Clarity on Success',
+      description: 'Unified Trio clarity on what constitutes a successful test and unambiguous kill-criteria.',
+      criteria: 'Product, Design, and Engineering celebrate invalidating bad ideas quickly and pivot together.',
+    },
+    {
+      value: 5,
+      level: 1,
+      label: 'Minor Metric Debates Resolved Fast',
+      description: 'Minor debates on metrics, resolved quickly via empirical user tests and shared session recordings.',
+      criteria: 'Shared customer interview recordings reviewed weekly across the entire squad.',
+    },
+    {
+      value: 10,
+      level: 2,
+      label: 'Disagreement on Problem to Solve',
+      description: 'Disagreement between Product, Design, and Tech on what core problem to solve first.',
+      criteria: 'Siloed debates without customer data; teams pull in different directions on MVP scope.',
+    },
+    {
+      value: 15,
+      level: 3,
+      label: 'Siloed Teams & Guesswork',
+      description: 'Siloed teams; engineering builds while product team is still guessing basic customer requirements.',
+      criteria: 'Zero cross-functional alignment; developers frustrated by constant scope redesigns.',
+    },
+  ],
+};
+
+// B. PHASE 2: PRODUCT-MARKET FIT (PMF) & RETENTION (P1–P5)
+export const PRODUCT_PMF_P1: DimensionDef<0 | 8 | 16 | 25> = {
   code: 'P1',
   name: 'Cohort Retention & Churn Dynamics',
   category: 'del',
   maxPoints: 25,
   weightLabel: '25 pts',
-  focusArea: 'Retention Curve Flattening & Organic Traction',
+  focusArea: 'Cohort Retention Curves & Logo Churn',
   options: [
     {
       value: 0,
       level: 0,
-      label: 'Flattened Smiling Retention Curve',
-      description: 'Flattening/smiling retention curve; net negative revenue churn; strong organic habituation.',
-      criteria: 'Day 90 B2B cohort retention flattens >= 40%; expansion revenue offsets churn.',
+      label: 'Flattening / Smiling Retention Curve',
+      description: 'Flattening / smiling retention curve; net negative revenue churn with organic expansion.',
+      criteria: 'Cohort retention stabilizes parallel to x-axis at >40% by month 3; net revenue retention >110%.',
     },
     {
       value: 8,
       level: 1,
-      label: 'Stable Baseline Retention',
-      description: 'Stable retention matching industry baseline; manageable churn with clear customer value.',
-      criteria: 'Day 90 retention flattens in 25–39% corridor; annual logo renewal > 80%.',
+      label: 'Stable Retention Meeting Baseline',
+      description: 'Stable retention meeting B2B/B2C SaaS benchmark; churn is manageable and predictable.',
+      criteria: 'Monthly logo churn <2.5%; customer renewals predictable with positive expansion balance.',
     },
     {
       value: 16,
       level: 2,
-      label: 'Persistent Downward Churn Slope',
-      description: 'Downward retention slope; leaky-bucket growth masked by continuous paid ad marketing.',
-      criteria: 'Day 90 retention < 20% with persistent negative slope; users abandon after onboarding.',
+      label: 'Downward Sloping Retention',
+      description: 'Downward sloping retention; high acquisition spend masking a catastrophic leaky bucket.',
+      criteria: 'Retention curve trends continuously toward zero; monthly logo churn 3–5%.',
     },
     {
       value: 25,
       level: 3,
-      label: 'Catastrophic Leaky Bucket Churn',
-      description: 'Catastrophic churn (>5% monthly logo churn); users abandon after onboarding; zero long-term retention.',
-      criteria: 'Day 30 retention < 5%; cohorts decay straight to zero; growth entirely subsidized by ad spend.',
+      label: 'Immediate Drop-Off (>5% Churn)',
+      description: 'Immediate drop-off; >5% monthly logo churn; high abandonment within first 7 days.',
+      criteria: 'Over 80% of newly acquired cohorts abandon the product before completing month 1.',
     },
   ],
 };
 
-export const PRODUCT_P2: DimensionDef<0 | 7 | 13 | 20> = {
+export const PRODUCT_PMF_P2: DimensionDef<0 | 7 | 13 | 20> = {
   code: 'P2',
-  name: 'Cycle Time from Discovery to Value Release',
+  name: 'Core Funnel Activation Rate',
   category: 'del',
   maxPoints: 20,
   weightLabel: '20 pts',
-  focusArea: 'DORA Velocity & Build-Measure-Learn Feedback',
+  focusArea: 'Time-to-Value & Aha Moment Velocity',
   options: [
     {
       value: 0,
       level: 0,
-      label: 'Continuous Deployment (<2 Weeks)',
-      description: 'Continuous deployment; idea-to-customer feedback loop in < 2 weeks via feature flags.',
-      criteria: 'Lead time for changes < 1 day; deployments on demand multiple times per week.',
+      label: '>60% Activation to "Aha!" Moment',
+      description: '>60% onboarding completion to "Aha!" moment within first session or initial 48 hours.',
+      criteria: 'Time-to-value < 15 minutes; self-serve friction virtually non-existent.',
     },
     {
       value: 7,
       level: 1,
-      label: 'Bi-Weekly Releases with Telemetry',
-      description: 'Bi-weekly releases with quantitative telemetry feedback and structured sprint reviews.',
-      criteria: 'Lead time for changes 1-2 weeks; deployment frequency bi-weekly.',
+      label: 'Industry Standard Activation (40-60%)',
+      description: 'Industry standard activation; self-serve friction minimal; clear onboarding guidance.',
+      criteria: 'Most signups complete initial setup and realize core value within first week.',
     },
     {
       value: 13,
       level: 2,
-      label: '2–3 Month Batch Releases',
-      description: '2-3 month release cycles; batch deployments; slow feedback loops and manual QA testing.',
-      criteria: 'Lead time for changes 1-3 months; deployments bundled into large quarterly trains.',
+      label: 'Steep Onboarding Drop-Offs',
+      description: 'Steep onboarding drop-offs; requires manual sales or customer success intervention to activate.',
+      criteria: '<25% of signups complete onboarding without direct human hand-holding.',
     },
     {
       value: 20,
       level: 3,
-      label: 'Feature Factory Stalemate (>6 Mos)',
-      description: 'Feature factory stalemate; releases take >6 months with zero user feedback or validation.',
-      criteria: 'Deployment requires change advisory board approvals, freezes, and multi-week rollbacks.',
+      label: 'Broken Activation Funnel (<15%)',
+      description: 'Broken activation funnel; <15% of signups ever reach the core value proposition.',
+      criteria: 'Complex setup, confusing configurations, and high friction cause immediate user bounce.',
     },
   ],
 };
 
-export const PRODUCT_P3: DimensionDef<0 | 7 | 14 | 20> = {
+export const PRODUCT_PMF_P3: DimensionDef<0 | 7 | 14 | 20> = {
   code: 'P3',
-  name: 'Unit Economics & Capital Efficiency (LTV/CAC)',
+  name: 'Value Stickiness & Engagement Depth',
   category: 'del',
   maxPoints: 20,
   weightLabel: '20 pts',
-  focusArea: 'Unit Economics & Capital Payback',
+  focusArea: 'DAU/WAU Ratios & Habit Formation',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: 'DAU/WAU >50% (Indispensable Tool)',
+      description: 'Daily/Weekly Active User ratio (DAU/WAU) >50%; indispensable workflow utility.',
+      criteria: 'Users log in multiple times daily; product is a mission-critical system of record or engagement.',
+    },
+    {
+      value: 7,
+      level: 1,
+      label: 'Consistent Weekly Utility',
+      description: 'Consistent weekly utility; active core user group relies on product for recurring tasks.',
+      criteria: 'DAU/WAU ratio 30–49%; dependable recurring workflow usage across customer segments.',
+    },
+    {
+      value: 14,
+      level: 2,
+      label: 'Shelfware Tendency (Monthly Logins)',
+      description: 'Shelfware tendency; users log in once or twice a month at most with declining engagement.',
+      criteria: 'DAU/WAU ratio <20%; product viewed as non-essential optional utility.',
+    },
+    {
+      value: 20,
+      level: 3,
+      label: 'Ghost Product (Forgotten Accounts)',
+      description: 'Ghost product; users forget they have licenses or accounts; zero habitual workflow.',
+      criteria: 'Zero active engagement; customer accounts go dormant for 60+ consecutive days.',
+    },
+  ],
+};
+
+export const PRODUCT_PMF_P4: DimensionDef<0 | 7 | 14 | 20> = {
+  code: 'P4',
+  name: 'Feature Usage Concentration vs. Bloat',
+  category: 'del',
+  maxPoints: 20,
+  weightLabel: '20 pts',
+  focusArea: 'Pareto Feature Distribution & Code Simplicity',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: '80% Users on Top 3 Core Features',
+      description: '80% of active users utilize the top 3 core features; ruthless product simplification.',
+      criteria: 'Laser focus on core value loop; low-value legacy features pruned systematically.',
+    },
+    {
+      value: 7,
+      level: 1,
+      label: 'Balanced Feature Spread',
+      description: 'Balanced feature spread with scheduled pruning of dead code and unused settings.',
+      criteria: 'Core features dominate usage; secondary features add clear specialized value.',
+    },
+    {
+      value: 14,
+      level: 2,
+      label: 'Cluttered UI & One-Off Custom Features',
+      description: 'Cluttered UI; custom feature requests built for one-off sales prospects cluttering navigation.',
+      criteria: 'Product team building features used by only 1 client; UI navigation becoming fragmented.',
+    },
+    {
+      value: 20,
+      level: 3,
+      label: 'Massive Feature Sprawl (>70% Dead)',
+      description: 'Massive feature sprawl; >70% of built code rarely or never used by active customers.',
+      criteria: 'Codebase choked with dead features; users overwhelmed by cluttered settings and menus.',
+    },
+  ],
+};
+
+export const PRODUCT_PMF_P5: DimensionDef<0 | 5 | 10 | 15> = {
+  code: 'P5',
+  name: 'User Friction & Organic Referral',
+  category: 'del',
+  maxPoints: 15,
+  weightLabel: '15 pts',
+  focusArea: 'Net Promoter Score & Word-of-Mouth Virality',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: 'High NPS (>60) & Organic Virality',
+      description: 'High NPS (>60); positive word-of-mouth referral loops driving inbound customer growth.',
+      criteria: 'K-factor > 0.4; customers actively write public reviews and recommend tool to peers.',
+    },
+    {
+      value: 5,
+      level: 1,
+      label: 'Healthy CSAT & Low Ticket Volume',
+      description: 'Healthy CSAT; standard support ticket volume; positive overall user sentiment.',
+      criteria: 'NPS 30–59; customer tickets handled efficiently without recurring usability complaints.',
+    },
+    {
+      value: 10,
+      level: 2,
+      label: 'Chronic Usability Complaints',
+      description: 'Chronic support tickets regarding usability barriers, unexpected bugs, and slow response times.',
+      criteria: 'NPS 0–29; users report frequent frustration with routine workflows.',
+    },
+    {
+      value: 15,
+      level: 3,
+      label: 'Hostile Sentiment & Competitor Migration',
+      description: 'Hostile user sentiment; customers actively seeking alternatives and complaining publicly.',
+      criteria: 'Negative NPS (<0); customers publicly warning others not to adopt platform.',
+    },
+  ],
+};
+
+// C. PHASE 3: SCALE & EXPANSION (P1–P5)
+export const PRODUCT_SCALE_P1: DimensionDef<0 | 8 | 16 | 25> = {
+  code: 'P1',
+  name: 'Unit Economics & Capital Efficiency (LTV/CAC)',
+  category: 'del',
+  maxPoints: 25,
+  weightLabel: '25 pts',
+  focusArea: 'LTV/CAC Ratio & Capital Payback Horizon',
   options: [
     {
       value: 0,
       level: 0,
       label: 'LTV/CAC > 3.5 (Payback < 12 Mos)',
-      description: 'LTV/CAC > 3.5; payback period < 12 months; strong viral pull and organic word-of-mouth.',
-      criteria: 'Organic referral K-factor > 0.4; gross software margin >= 80%.',
+      description: 'LTV/CAC > 3.5; payback period < 12 months; highly sustainable unit economics.',
+      criteria: 'Gross software margin >=80%; expansion revenue offsets all customer churn.',
     },
     {
-      value: 7,
+      value: 8,
       level: 1,
-      label: 'Sustainable Unit Economics (~2.5–3.0)',
-      description: 'LTV/CAC ~ 2.5–3.0; sustainable unit economics supported by predictable inbound channels.',
+      label: 'LTV/CAC 2.5–3.0 (Healthy Growth)',
+      description: 'LTV/CAC 2.5–3.0; sustainable unit economics supported by predictable inbound growth.',
       criteria: 'Payback period 12–18 months; software gross margin 70–79%.',
     },
     {
-      value: 14,
+      value: 16,
       level: 2,
-      label: 'Subsidized Unit Economics (<1.5)',
-      description: 'LTV/CAC < 1.5; acquisition costs eating operational margin; paid marketing dependency.',
-      criteria: 'Payback period > 24 months; gross margin degrading due to cloud or support overhead.',
+      label: 'LTV/CAC < 1.5 (Margin Degradation)',
+      description: 'LTV/CAC < 1.5; acquisition costs eating all gross margin; paid marketing dependency.',
+      criteria: 'Payback period >24 months; increasing churn eroding customer lifetime value.',
     },
     {
-      value: 20,
+      value: 25,
       level: 3,
       label: 'Negative Gross Margins',
-      description: 'Negative gross margins; product loses money on every incremental user; capital drain.',
-      criteria: 'Cloud computing, API inference, and support costs exceed customer subscription fees.',
+      description: 'Negative margins; business loses money on every incremental user scaled.',
+      criteria: 'Cloud hosting and customer support costs exceed subscription revenue per account.',
     },
   ],
 };
 
-export const PRODUCT_P4: DimensionDef<0 | 7 | 14 | 20> = {
-  code: 'P4',
-  name: 'Product Telemetry & Quantitative Observability',
+export const PRODUCT_SCALE_P2: DimensionDef<0 | 7 | 13 | 20> = {
+  code: 'P2',
+  name: 'Cycle Time from Discovery to Value Release',
   category: 'del',
   maxPoints: 20,
   weightLabel: '20 pts',
-  focusArea: 'Behavioral Analytics & Instrumentation',
+  focusArea: 'Continuous CI/CD Delivery & Release Frequency',
   options: [
     {
       value: 0,
       level: 0,
-      label: 'Complete Event Telemetry',
-      description: 'Complete event telemetry (Mixpanel/PostHog/Datadog) explicitly tied to business outcomes.',
+      label: 'Continuous Deployment (< 2 Weeks)',
+      description: 'Continuous deployment; idea to production telemetry < 2 weeks via automated canary pipelines.',
+      criteria: 'DORA lead time for changes < 1 day; deployment frequency multiple times per day.',
+    },
+    {
+      value: 7,
+      level: 1,
+      label: 'Bi-Weekly Predictable Releases',
+      description: 'Bi-weekly predictable releases with quantitative telemetry feedback loops.',
+      criteria: 'Lead time for changes 1–2 weeks; automated test suites and canary deployments active.',
+    },
+    {
+      value: 13,
+      level: 2,
+      label: '2–3 Month Release Batches',
+      description: '2–3 month release batches; manual QA bottlenecks; slow customer feedback.',
+      criteria: 'Lead time for changes 1–3 months; deployments bundled into large quarterly trains.',
+    },
+    {
+      value: 20,
+      level: 3,
+      label: 'Feature Factory Stalemate (>6 Mos)',
+      description: 'Feature factory stalemate; releases take >6 months with deployment panic and CAB reviews.',
+      criteria: 'Deployments require change advisory board approvals, freezes, and multi-week rollbacks.',
+    },
+  ],
+};
+
+export const PRODUCT_SCALE_P3: DimensionDef<0 | 7 | 14 | 20> = {
+  code: 'P3',
+  name: 'Telemetry & Quantitative Observability',
+  category: 'del',
+  maxPoints: 20,
+  weightLabel: '20 pts',
+  focusArea: 'Real-Time Telemetry & Behavioral Analytics',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: 'Complete Event Telemetry (Revenue-Tied)',
+      description: 'Complete event tracking (Mixpanel/PostHog/Datadog) explicitly tied to revenue and active retention.',
       criteria: 'Real-time cohort retention dashboards, conversion funnels, and error telemetry active.',
     },
     {
       value: 7,
       level: 1,
-      label: 'Standard Funnel Analytics',
-      description: 'Standard analytics on core funnels; qualitative interviews conducted regularly.',
+      label: 'Standard Analytics on Core Workflows',
+      description: 'Standard analytics on core workflows; qualitative cohort reviews conducted monthly.',
       criteria: 'Core onboarding and activation events tracked with monthly behavioral reviews.',
     },
     {
       value: 14,
       level: 2,
       label: 'Gaps in Funnel Tracking',
-      description: 'Gaps in funnel tracking; decisions based primarily on anecdotal stakeholder feedback.',
+      description: 'Gaps in funnel tracking; team relies on anecdotal stakeholder feedback for decisions.',
       criteria: 'Product team cannot answer core DAU/MAU ratios or exact drop-off steps in onboarding.',
     },
     {
@@ -857,48 +1394,153 @@ export const PRODUCT_P4: DimensionDef<0 | 7 | 14 | 20> = {
   ],
 };
 
-export const PRODUCT_P5: DimensionDef<0 | 5 | 10 | 15> = {
-  code: 'P5',
-  name: 'Team Flow & Cognitive Context Switching',
+export const PRODUCT_SCALE_P4: DimensionDef<0 | 7 | 14 | 20> = {
+  code: 'P4',
+  name: 'Cross-Team Cognitive Load & Debt Coupling',
   category: 'del',
-  maxPoints: 15,
-  weightLabel: '15 pts',
-  focusArea: 'Stream-Aligned Autonomy & Team Focus',
+  maxPoints: 20,
+  weightLabel: '20 pts',
+  focusArea: 'Stream-Aligned Architecture & Squad Independence',
   options: [
     {
       value: 0,
       level: 0,
-      label: 'Deep Work Focus (1 Initiative)',
-      description: 'Deep work focus; single product initiative per engineer; autonomous stream-aligned team.',
-      criteria: 'Lead time from commit to prod < 2 hours; zero cross-team blocking tickets.',
+      label: 'Modular Stream-Aligned Squads',
+      description: 'Modular stream-aligned teams; clean bounded APIs; zero cross-squad blocking tickets.',
+      criteria: 'Lead time from commit to prod < 2 hours; independent squad deployment without coordination.',
     },
     {
-      value: 5,
+      value: 7,
       level: 1,
-      label: 'Manageable Multitasking (Max 2)',
-      description: 'Manageable multitasking (max 2 parallel initiatives); clear sprint boundaries.',
-      criteria: 'Minimal dependency handoffs; cross-team blockers resolved within 2 business days.',
+      label: 'Moderate Dependency Coordination',
+      description: 'Moderate dependency coordination; dependencies resolved cleanly within sprint boundaries.',
+      criteria: 'Cross-team blockers resolved within 2 business days; clear team API ownership contracts.',
     },
     {
-      value: 10,
+      value: 14,
       level: 2,
-      label: 'Chronic Context Switching',
-      description: 'Chronic context switching; teams split across multiple clients, maintenance, and projects.',
+      label: 'High Cognitive Load & Monolith Locks',
+      description: 'High cognitive load; teams blocked by shared monolith, schema locks, and legacy service delays.',
       criteria: 'Cross-team dependency blockers logged in >40% of sprint tasks; release coordination meetings.',
     },
     {
-      value: 15,
+      value: 20,
       level: 3,
-      label: 'Severe Burnout & Gridlock',
-      description: 'Severe burnout; key engineer departures; delivery paralysis; horizontal silo gridlock.',
-      criteria: 'Developers work on 4+ unrelated codebases weekly; velocity drops to near zero.',
+      label: 'Organizational Gridlock & Chaos',
+      description: 'Organizational gridlock; cross-team dependency chaos; releases freeze across all squads.',
+      criteria: 'Developers work on 4+ unrelated codebases weekly; squad velocity drops to near zero.',
     },
   ],
 };
 
-// ==========================================
-// C. SCORING & EVALUATION DATA MODELS
-// ==========================================
+export const PRODUCT_SCALE_P5: DimensionDef<0 | 5 | 10 | 15> = {
+  code: 'P5',
+  name: 'Platform Scalability & Incident Fatigue',
+  category: 'del',
+  maxPoints: 15,
+  weightLabel: '15 pts',
+  focusArea: 'SRE Availability & Chaos Resilience',
+  options: [
+    {
+      value: 0,
+      level: 0,
+      label: '99.95%+ Uptime & Multi-Region Auto-Scale',
+      description: '99.95%+ uptime; auto-scaling multi-region; proactive chaos engineering and automated failovers.',
+      criteria: 'System availability >= 99.95%; MTTR < 15 minutes; zero manual scaling interventions.',
+    },
+    {
+      value: 5,
+      level: 1,
+      label: 'Stable Cloud Infrastructure',
+      description: 'Stable cloud infrastructure; minor latency spikes during peak loads without service outage.',
+      criteria: 'System availability 99.90–99.94%; MTTR < 1 hour; predictable scaling profiles.',
+    },
+    {
+      value: 10,
+      level: 2,
+      label: 'Chronic Performance Degradation',
+      description: 'Chronic performance degradation; frequent manual server scaling interventions during peaks.',
+      criteria: 'System availability 99.50–99.89%; MTTR 1–4 hours; regular database locks.',
+    },
+    {
+      value: 15,
+      level: 3,
+      label: 'Critical Outage Blackouts & Alert Fatigue',
+      description: 'Critical outage blackouts; alert fatigue; SLA breach penalties from enterprise customers.',
+      criteria: 'System availability < 99.50%; MTTR > 4 hours; major production outages monthly.',
+    },
+  ],
+};
+
+// =========================================================================
+// 5. HELPER: DYNAMIC QUESTIONNAIRE RETRIEVAL
+// =========================================================================
+
+export function getDimensionsForEvaluation(
+  mode: GovernanceMode,
+  phaseId: string,
+  category: 'gov' | 'del'
+): DimensionDef[] {
+  if (mode === 'project') {
+    if (category === 'gov') {
+      return [PROJECT_D1, PROJECT_D2, PROJECT_D3, PROJECT_D4, PROJECT_D5];
+    }
+    // Del
+    if (phaseId === 'preflight') {
+      return [
+        PROJECT_PREFLIGHT_P1,
+        PROJECT_PREFLIGHT_P2,
+        PROJECT_PREFLIGHT_P3,
+        PROJECT_PREFLIGHT_P4,
+        PROJECT_PREFLIGHT_P5,
+      ];
+    }
+    return [
+      PROJECT_LIVE_O1,
+      PROJECT_LIVE_O2,
+      PROJECT_LIVE_O3,
+      PROJECT_LIVE_O4,
+      PROJECT_LIVE_O5,
+    ];
+  }
+
+  // Product Mode
+  if (category === 'gov') {
+    return [PRODUCT_G1, PRODUCT_G2, PRODUCT_G3, PRODUCT_G4, PRODUCT_G5];
+  }
+
+  // Del
+  if (phaseId === 'discovery') {
+    return [
+      PRODUCT_DISC_P1,
+      PRODUCT_DISC_P2,
+      PRODUCT_DISC_P3,
+      PRODUCT_DISC_P4,
+      PRODUCT_DISC_P5,
+    ];
+  }
+  if (phaseId === 'pmf') {
+    return [
+      PRODUCT_PMF_P1,
+      PRODUCT_PMF_P2,
+      PRODUCT_PMF_P3,
+      PRODUCT_PMF_P4,
+      PRODUCT_PMF_P5,
+    ];
+  }
+  // scale
+  return [
+    PRODUCT_SCALE_P1,
+    PRODUCT_SCALE_P2,
+    PRODUCT_SCALE_P3,
+    PRODUCT_SCALE_P4,
+    PRODUCT_SCALE_P5,
+  ];
+}
+
+// =========================================================================
+// 6. SCORING & EVALUATION DATA MODELS
+// =========================================================================
 
 export interface ProjectScores {
   d1: 0 | 8 | 16 | 25;
@@ -932,9 +1574,18 @@ export interface QuadrantDetails {
   badgeClass: string;
   hexColor: string;
   themeColor: string;
-  urgency: 'CRITICAL' | 'HIGH' | 'STABLE' | 'MODERATE';
+  urgency: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'STABLE';
   description: string;
   clinicalAction: string;
+}
+
+export interface DimensionScoreItem {
+  code: string;
+  name: string;
+  category: 'gov' | 'del';
+  value: number;
+  max: number;
+  normPercent: number;
 }
 
 export interface DualModeEvaluation {
@@ -956,14 +1607,7 @@ export interface DualModeEvaluation {
     active: boolean;
     explanation: string;
   };
-  dimensionBreakdown: {
-    code: string;
-    name: string;
-    category: 'gov' | 'del';
-    value: number;
-    max: number;
-    normPercent: number;
-  }[];
+  dimensionBreakdown: DimensionScoreItem[];
   immediate72HourReset: {
     title: string;
     action: string;
@@ -1000,6 +1644,10 @@ export function getDefaultProductScores(): ProductScores {
     p5: 5,
   };
 }
+
+// =========================================================================
+// 7. DETERMINISTIC CALCULATION ENGINE
+// =========================================================================
 
 export function calculateDualModeDGRF(
   mode: GovernanceMode,
@@ -1050,7 +1698,7 @@ export function calculateDualModeDGRF(
         hexColor: '#EF4444',
         themeColor: '#ef4444',
         urgency: 'CRITICAL',
-        description: 'Multi-Vector Collapse: Paralyzed governance combined with runaway schedule and defect decay.',
+        description: 'Multi-Vector Collapse: Paralyzed governance combined with runaway schedule, budget depletion, and regression defects.',
         clinicalAction: '72-Hour Capital Freeze & Immediate Steering Committee Restructuring.',
       },
       Q2: {
@@ -1060,8 +1708,8 @@ export function calculateDualModeDGRF(
         hexColor: '#F59E0B',
         themeColor: '#f59e0b',
         urgency: 'HIGH',
-        description: 'Decoupled Governance Vulnerability: Heroic engineering temporarily insulating toxic procurement or sponsor vacuum.',
-        clinicalAction: 'Lock Scope Intake & Re-anchor Single-Threaded Executive Sponsor.',
+        description: 'Decoupled Governance Vulnerability: Heroic delivery team temporarily compensating for toxic procurement or absentee sponsorship.',
+        clinicalAction: 'Lock Scope Intake & Re-anchor Single Accountable Executive Sponsor.',
       },
       Q3: {
         id: 'Q3',
@@ -1070,7 +1718,7 @@ export function calculateDualModeDGRF(
         hexColor: '#10B981',
         themeColor: '#10b981',
         urgency: 'STABLE',
-        description: 'Lighthouse Target Operating Model: Empowered mandate, outcome-aligned contract, and predictable delivery velocity.',
+        description: 'Target Enterprise Operating Model: Single empowered mandate, outcome-aligned contract, and predictable delivery velocity.',
         clinicalAction: 'Defend Team Autonomy & Maintain Zero-Sum Scope Control.',
       },
       Q4: {
@@ -1080,27 +1728,63 @@ export function calculateDualModeDGRF(
         hexColor: '#0EA5E9',
         themeColor: '#0ea5e9',
         urgency: 'MODERATE',
-        description: 'Operational Delivery Bottleneck: Sound governance charter blocked by testing bottlenecks or technical debt.',
-        clinicalAction: 'Inject Engineering Capacity (Slash WIP by 40%; Do NOT Add PMO Overhead).',
+        description: 'Operational Friction: Robust governance and executive mandate, but execution choked by technical debt or legacy coupling.',
+        clinicalAction: 'Slash Work-in-Progress (WIP) by 40% & Automate CI/CD Regression Tooling.',
       },
     };
 
-    const phaseObj = PROJECT_PHASES.find((p) => p.id === phaseId) || PROJECT_PHASES[0];
+    const phaseObj = PROJECT_PHASES.find((p) => p.id === phaseId) || PROJECT_PHASES[1];
 
     const bufferActive =
       (totalGov >= 40 && totalGov <= 60) || (totalDel >= 40 && totalDel <= 60);
 
-    const dimensionBreakdown = [
-      { code: 'D1', name: 'Authority', category: 'gov' as const, value: projectScores.d1, max: 25, normPercent: (projectScores.d1 / 25) * 100 },
-      { code: 'D2', name: 'Procurement', category: 'gov' as const, value: projectScores.d2, max: 20, normPercent: (projectScores.d2 / 20) * 100 },
-      { code: 'D3', name: 'Scope CCB', category: 'gov' as const, value: projectScores.d3, max: 20, normPercent: (projectScores.d3 / 20) * 100 },
-      { code: 'D4', name: 'Contingency', category: 'gov' as const, value: projectScores.d4, max: 20, normPercent: (projectScores.d4 / 20) * 100 },
-      { code: 'D5', name: 'Architecture', category: 'gov' as const, value: projectScores.d5, max: 15, normPercent: (projectScores.d5 / 15) * 100 },
-      { code: 'O1', name: 'Schedule', category: 'del' as const, value: projectScores.o1, max: 25, normPercent: (projectScores.o1 / 25) * 100 },
-      { code: 'O2', name: 'Burn (CPI)', category: 'del' as const, value: projectScores.o2, max: 20, normPercent: (projectScores.o2 / 20) * 100 },
-      { code: 'O3', name: 'Defect Churn', category: 'del' as const, value: projectScores.o3, max: 20, normPercent: (projectScores.o3 / 20) * 100 },
-      { code: 'O4', name: 'Morale', category: 'del' as const, value: projectScores.o4, max: 20, normPercent: (projectScores.o4 / 20) * 100 },
-      { code: 'O5', name: 'Candor', category: 'del' as const, value: projectScores.o5, max: 15, normPercent: (projectScores.o5 / 15) * 100 },
+    const isPreflight = phaseObj.id === 'preflight';
+    const dimensionBreakdown: DimensionScoreItem[] = [
+      { code: 'D1', name: 'Authority', category: 'gov', value: projectScores.d1, max: 25, normPercent: (projectScores.d1 / 25) * 100 },
+      { code: 'D2', name: 'Procurement', category: 'gov', value: projectScores.d2, max: 20, normPercent: (projectScores.d2 / 20) * 100 },
+      { code: 'D3', name: 'Scope Control', category: 'gov', value: projectScores.d3, max: 20, normPercent: (projectScores.d3 / 20) * 100 },
+      { code: 'D4', name: 'Contingency', category: 'gov', value: projectScores.d4, max: 20, normPercent: (projectScores.d4 / 20) * 100 },
+      { code: 'D5', name: 'Architecture', category: 'gov', value: projectScores.d5, max: 15, normPercent: (projectScores.d5 / 15) * 100 },
+      {
+        code: isPreflight ? 'P1' : 'O1',
+        name: isPreflight ? 'Deadline Rigor' : 'Schedule Drift',
+        category: 'del',
+        value: projectScores.o1,
+        max: 25,
+        normPercent: (projectScores.o1 / 25) * 100,
+      },
+      {
+        code: isPreflight ? 'P2' : 'O2',
+        name: isPreflight ? 'Req Boundaries' : 'Burn Velocity',
+        category: 'del',
+        value: projectScores.o2,
+        max: 20,
+        normPercent: (projectScores.o2 / 20) * 100,
+      },
+      {
+        code: isPreflight ? 'P3' : 'O3',
+        name: isPreflight ? 'Budget Model' : 'Defect Churn',
+        category: 'del',
+        value: projectScores.o3,
+        max: 20,
+        normPercent: (projectScores.o3 / 20) * 100,
+      },
+      {
+        code: isPreflight ? 'P4' : 'O4',
+        name: isPreflight ? 'DoD Tooling' : 'Cognitive Load',
+        category: 'del',
+        value: projectScores.o4,
+        max: 20,
+        normPercent: (projectScores.o4 / 20) * 100,
+      },
+      {
+        code: isPreflight ? 'P5' : 'O5',
+        name: isPreflight ? 'Resource Ring-Fence' : 'Stakeholder Trust',
+        category: 'del',
+        value: projectScores.o5,
+        max: 15,
+        normPercent: (projectScores.o5 / 15) * 100,
+      },
     ];
 
     return {
@@ -1108,7 +1792,9 @@ export function calculateDualModeDGRF(
       phase: phaseObj.id,
       phaseName: phaseObj.name,
       govAxisName: 'Structural Governance (PrjGov)',
-      delAxisName: 'Operational Delivery (PrjDel)',
+      delAxisName: isPreflight
+        ? 'Pre-Flight Readiness (PrjPreFlight)'
+        : 'Operational Delivery (PrjDel)',
       rawGov,
       govPenalty,
       totalGov,
@@ -1123,12 +1809,14 @@ export function calculateDualModeDGRF(
       bufferZone: {
         active: bufferActive,
         explanation: bufferActive
-          ? 'Score falls within the metastable [40, 60] buffer zone. Qualitative audit recommended.'
+          ? 'Score falls within the metastable [40, 60] buffer zone. Comprehensive qualitative gate audit recommended.'
           : 'Scores reside outside the transitional buffer zone corridor.',
       },
       dimensionBreakdown,
       immediate72HourReset: {
-        title: 'Project Governance 72-Hour Reset Directive',
+        title: isPreflight
+          ? 'Project Pre-Flight 72-Hour Gate Intervention'
+          : 'Project Governance 72-Hour Reset Directive',
         action:
           qId === 'Q1'
             ? 'Issue immediate 72-Hour Capital Freeze & dissolve multi-stakeholder consensus committee.'
@@ -1149,9 +1837,9 @@ export function calculateDualModeDGRF(
     };
   }
 
-  // ==========================================
+  // =========================================================================
   // PRODUCT MODE EVALUATION
-  // ==========================================
+  // =========================================================================
   const rawGov =
     productScores.g1 +
     productScores.g2 +
@@ -1168,9 +1856,33 @@ export function calculateDualModeDGRF(
     productScores.p4 +
     productScores.p5;
 
-  // Product Penalty Engine:
-  // If (P1 === 25 && P4 >= 14) { PrdDel = Math.min(100, rawPrdDel + 12); } // Blind Leaky Bucket Penalty
-  const penaltyActive = productScores.p1 === 25 && productScores.p4 >= 14;
+  const phaseObj = PRODUCT_PHASES.find((p) => p.id === phaseId) || PRODUCT_PHASES[0];
+
+  // Dynamic Product Penalty Engine based on active Phase:
+  let penaltyActive = false;
+  let penaltyMessage: string | null = null;
+
+  if (phaseObj.id === 'discovery') {
+    penaltyActive = productScores.p1 === 25 && productScores.p3 >= 14;
+    if (penaltyActive) {
+      penaltyMessage =
+        'P1=25 (Zero Customer Contact) combined with P3>=14 (Market Apathy) activates the +12 Discovery Failure Penalty on PrdDel.';
+    }
+  } else if (phaseObj.id === 'pmf') {
+    penaltyActive = productScores.p1 === 25 && productScores.p4 >= 14;
+    if (penaltyActive) {
+      penaltyMessage =
+        'P1=25 (Catastrophic Churn) combined with P4>=14 (Massive Feature Sprawl) triggers the +12 Blind Leaky Bucket Penalty on PrdDel.';
+    }
+  } else {
+    // scale
+    penaltyActive = productScores.p1 === 25 && productScores.p3 >= 14;
+    if (penaltyActive) {
+      penaltyMessage =
+        'P1=25 (Negative Margins / Capital Burn) combined with P3>=14 (Blind Telemetry) triggers the +12 Scale Collapse Penalty on PrdDel.';
+    }
+  }
+
   const delPenalty = penaltyActive ? 12 : 0;
   const totalDel = Math.min(100, rawDel + delPenalty);
 
@@ -1229,22 +1941,48 @@ export function calculateDualModeDGRF(
     },
   };
 
-  const phaseObj = PRODUCT_PHASES.find((p) => p.id === phaseId) || PRODUCT_PHASES[0];
-
   const bufferActive =
     (totalGov >= 40 && totalGov <= 60) || (totalDel >= 40 && totalDel <= 60);
 
-  const dimensionBreakdown = [
-    { code: 'G1', name: 'Vision', category: 'gov' as const, value: productScores.g1, max: 25, normPercent: (productScores.g1 / 25) * 100 },
-    { code: 'G2', name: 'Capital', category: 'gov' as const, value: productScores.g2, max: 20, normPercent: (productScores.g2 / 20) * 100 },
-    { code: 'G3', name: 'Autonomy', category: 'gov' as const, value: productScores.g3, max: 20, normPercent: (productScores.g3 / 20) * 100 },
-    { code: 'G4', name: 'Tech Debt', category: 'gov' as const, value: productScores.g4, max: 20, normPercent: (productScores.g4 / 20) * 100 },
-    { code: 'G5', name: 'Compliance', category: 'gov' as const, value: productScores.g5, max: 15, normPercent: (productScores.g5 / 15) * 100 },
-    { code: 'P1', name: 'Retention', category: 'del' as const, value: productScores.p1, max: 25, normPercent: (productScores.p1 / 25) * 100 },
-    { code: 'P2', name: 'Cycle Time', category: 'del' as const, value: productScores.p2, max: 20, normPercent: (productScores.p2 / 20) * 100 },
-    { code: 'P3', name: 'LTV/CAC', category: 'del' as const, value: productScores.p3, max: 20, normPercent: (productScores.p3 / 20) * 100 },
-    { code: 'P4', name: 'Telemetry', category: 'del' as const, value: productScores.p4, max: 20, normPercent: (productScores.p4 / 20) * 100 },
-    { code: 'P5', name: 'Flow', category: 'del' as const, value: productScores.p5, max: 15, normPercent: (productScores.p5 / 15) * 100 },
+  // Dynamic names per product phase for radar
+  let p1Name = 'Retention';
+  let p2Name = 'Cycle Time';
+  let p3Name = 'Unit Econ';
+  let p4Name = 'Telemetry';
+  let p5Name = 'Flow';
+
+  if (phaseObj.id === 'discovery') {
+    p1Name = 'Discovery Vel';
+    p2Name = 'Pivot Latency';
+    p3Name = 'Fit Signal';
+    p4Name = 'Prototype Fid';
+    p5Name = 'Trio Alignment';
+  } else if (phaseObj.id === 'pmf') {
+    p1Name = 'Cohort Churn';
+    p2Name = 'Activation';
+    p3Name = 'Stickiness';
+    p4Name = 'Feature Focus';
+    p5Name = 'Referral';
+  } else {
+    // scale
+    p1Name = 'Unit Econ (CAC)';
+    p2Name = 'Release Cycle';
+    p3Name = 'Telemetry';
+    p4Name = 'Cognitive Load';
+    p5Name = 'Scalability';
+  }
+
+  const dimensionBreakdown: DimensionScoreItem[] = [
+    { code: 'G1', name: 'Vision', category: 'gov', value: productScores.g1, max: 25, normPercent: (productScores.g1 / 25) * 100 },
+    { code: 'G2', name: 'Capital', category: 'gov', value: productScores.g2, max: 20, normPercent: (productScores.g2 / 20) * 100 },
+    { code: 'G3', name: 'Autonomy', category: 'gov', value: productScores.g3, max: 20, normPercent: (productScores.g3 / 20) * 100 },
+    { code: 'G4', name: 'Tech Debt', category: 'gov', value: productScores.g4, max: 20, normPercent: (productScores.g4 / 20) * 100 },
+    { code: 'G5', name: 'Compliance', category: 'gov', value: productScores.g5, max: 15, normPercent: (productScores.g5 / 15) * 100 },
+    { code: 'P1', name: p1Name, category: 'del', value: productScores.p1, max: 25, normPercent: (productScores.p1 / 25) * 100 },
+    { code: 'P2', name: p2Name, category: 'del', value: productScores.p2, max: 20, normPercent: (productScores.p2 / 20) * 100 },
+    { code: 'P3', name: p3Name, category: 'del', value: productScores.p3, max: 20, normPercent: (productScores.p3 / 20) * 100 },
+    { code: 'P4', name: p4Name, category: 'del', value: productScores.p4, max: 20, normPercent: (productScores.p4 / 20) * 100 },
+    { code: 'P5', name: p5Name, category: 'del', value: productScores.p5, max: 15, normPercent: (productScores.p5 / 15) * 100 },
   ];
 
   return {
@@ -1252,7 +1990,12 @@ export function calculateDualModeDGRF(
     phase: phaseObj.id,
     phaseName: phaseObj.name,
     govAxisName: 'Strategic Product Governance (PrdGov)',
-    delAxisName: 'Operational Traction & Flow (PrdDel)',
+    delAxisName:
+      phaseObj.id === 'discovery'
+        ? 'Validation & Discovery Flow (PrdDel)'
+        : phaseObj.id === 'pmf'
+        ? 'Retention & Funnel Velocity (PrdDel)'
+        : 'Unit Economics & Scale Flow (PrdDel)',
     rawGov,
     govPenalty,
     totalGov,
@@ -1261,9 +2004,7 @@ export function calculateDualModeDGRF(
     totalDel,
     quadrant: quadrantMap[qId],
     penaltyActive,
-    penaltyMessage: penaltyActive
-      ? 'P1=25 (Catastrophic Churn) combined with P4>=14 (Blind Telemetry) triggers the +12 Blind Leaky Bucket Penalty on PrdDel.'
-      : null,
+    penaltyMessage,
     bufferZone: {
       active: bufferActive,
       explanation: bufferActive
@@ -1272,7 +2013,12 @@ export function calculateDualModeDGRF(
     },
     dimensionBreakdown,
     immediate72HourReset: {
-      title: 'Digital Product 72-Hour Turnaround Directive',
+      title:
+        phaseObj.id === 'discovery'
+          ? 'Phase 1 Discovery 72-Hour Realignment Directive'
+          : phaseObj.id === 'pmf'
+          ? 'Phase 2 PMF & Retention 72-Hour Reset Directive'
+          : 'Phase 3 Scale & Platform 72-Hour Turnaround Directive',
       action:
         qId === 'Q1'
           ? 'Cease all paid marketing and new feature delivery; interview 10 churning accounts within 72 hours.'
