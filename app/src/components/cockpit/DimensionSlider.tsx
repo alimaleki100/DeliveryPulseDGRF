@@ -2,121 +2,167 @@
 
 import React from 'react';
 import {
-  CockpitGovInputs,
-  CockpitDelInputs,
-  D1_META,
-  D2_META,
-  D3_META,
-  D4_META,
-  D5_META,
-  O1_META,
-  O2_META,
-  O3_META,
-  O4_META,
-  O5_META,
-  DimensionMetadata,
-} from '@/lib/engine/cockpit-engine';
-import { ShieldAlert, Layers, Activity, Zap, Info, Check } from 'lucide-react';
+  GovernanceMode,
+  ProjectScores,
+  ProductScores,
+  PROJECT_D1,
+  PROJECT_D2,
+  PROJECT_D3,
+  PROJECT_D4,
+  PROJECT_D5,
+  PROJECT_O1,
+  PROJECT_O2,
+  PROJECT_O3,
+  PROJECT_O4,
+  PROJECT_O5,
+  PRODUCT_G1,
+  PRODUCT_G2,
+  PRODUCT_G3,
+  PRODUCT_G4,
+  PRODUCT_G5,
+  PRODUCT_P1,
+  PRODUCT_P2,
+  PRODUCT_P3,
+  PRODUCT_P4,
+  PRODUCT_P5,
+  DimensionDef,
+} from '@/lib/engine/dual-mode-engine';
+import { ShieldAlert, Layers, Activity, AlertTriangle, Zap, Check } from 'lucide-react';
 
 interface DimensionSliderProps {
-  activeTab: 'gov' | 'del';
-  onTabChange: (tab: 'gov' | 'del') => void;
-  govInputs: CockpitGovInputs;
-  delInputs: CockpitDelInputs;
-  onGovChange: (key: keyof CockpitGovInputs, val: any) => void;
-  onDelChange: (key: keyof CockpitDelInputs, val: any) => void;
+  mode: GovernanceMode;
+  activePart: 'gov' | 'del';
+  onPartChange: (part: 'gov' | 'del') => void;
+  projectScores: ProjectScores;
+  productScores: ProductScores;
+  onProjectScoreChange: (key: keyof ProjectScores, val: any) => void;
+  onProductScoreChange: (key: keyof ProductScores, val: any) => void;
+  penaltyActive: boolean;
+  penaltyMessage: string | null;
 }
 
 export const DimensionSlider: React.FC<DimensionSliderProps> = ({
-  activeTab,
-  onTabChange,
-  govInputs,
-  delInputs,
-  onGovChange,
-  onDelChange,
+  mode,
+  activePart,
+  onPartChange,
+  projectScores,
+  productScores,
+  onProjectScoreChange,
+  onProductScoreChange,
+  penaltyActive,
+  penaltyMessage,
 }) => {
-  const govPenaltyActive = govInputs.d1 === 25 && govInputs.d2 >= 13;
+  const isProject = mode === 'project';
+
+  const part1Label = isProject
+    ? 'Part 1: Structural Governance (PrjGov, D1–D5)'
+    : 'Part 1: Strategic Product Governance (PrdGov, G1–G5)';
+
+  const part2Label = isProject
+    ? 'Part 2: Operational Delivery (PrjDel, O1–O5)'
+    : 'Part 2: Operational Traction & Flow (PrdDel, P1–P5)';
 
   return (
     <div className="rounded-2xl bg-slate-900/90 border border-slate-800 p-5 sm:p-6 shadow-2xl backdrop-blur-xl">
-      {/* Tab Navigation */}
+      {/* Questionnaire Tabs Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800/80 mb-5 gap-3">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => onTabChange('gov')}
+            onClick={() => onPartChange('gov')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all ${
-              activeTab === 'gov'
+              activePart === 'gov'
                 ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
             <Layers className="w-4 h-4 text-amber-400" />
-            <span>Structural Governance (D1–D5)</span>
-            {govPenaltyActive && (
+            <span>{part1Label}</span>
+            {isProject && penaltyActive && (
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
             )}
           </button>
 
           <button
-            onClick={() => onTabChange('del')}
+            onClick={() => onPartChange('del')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all ${
-              activeTab === 'del'
+              activePart === 'del'
                 ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-sm'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
             <Activity className="w-4 h-4 text-sky-400" />
-            <span>Operational Delivery (O1–O5)</span>
+            <span>{part2Label}</span>
+            {!isProject && penaltyActive && (
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping" />
+            )}
           </button>
         </div>
 
         <span className="text-xs text-slate-500 font-mono">
-          {activeTab === 'gov'
-            ? 'Y-Axis Vectors (PrjGov, Max 100)'
-            : 'X-Axis Vectors (PrjDel, Max 100)'}
+          {activePart === 'gov' ? 'Vertical Y-Axis (0–100)' : 'Horizontal X-Axis (0–100)'}
         </span>
       </div>
 
-      {/* Cross-dimensional Penalty Alert Banner */}
-      {activeTab === 'gov' && govPenaltyActive && (
+      {/* Nonlinear Penalty Warning Banner */}
+      {penaltyActive && (
         <div className="mb-6 p-4 rounded-xl bg-rose-950/70 border border-rose-500/60 flex items-start gap-3.5 text-rose-200 animate-fadeIn shadow-lg">
           <ShieldAlert className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
           <div className="text-xs">
             <span className="font-bold uppercase tracking-wider text-rose-300 block mb-1">
-              Nonlinear Interactive Penalty Triggered (+10 Pts Added to PrjGov)
+              Nonlinear Interaction Penalty Triggered
             </span>
             <span className="leading-relaxed text-slate-200">
-              Mathematical Rule: Absentee Mandate (<code className="font-mono text-rose-300">D1 = 25</code>) combined with Adversarial Procurement / Vendor Lock-in (<code className="font-mono text-rose-300">D2 &ge; 13</code>) unleashes unchecked vendor opportunism. A 10-point systemic penalty is added directly to composite Governance Risk.
+              {penaltyMessage}
             </span>
           </div>
         </div>
       )}
 
-      {/* Dimension Items */}
+      {/* Dimension Items List */}
       <div className="space-y-6">
-        {activeTab === 'gov' ? (
-          <>
-            {renderDimensionBlock(D1_META, govInputs.d1, (val) => onGovChange('d1', val))}
-            {renderDimensionBlock(D2_META, govInputs.d2, (val) => onGovChange('d2', val))}
-            {renderDimensionBlock(D3_META, govInputs.d3, (val) => onGovChange('d3', val))}
-            {renderDimensionBlock(D4_META, govInputs.d4, (val) => onGovChange('d4', val))}
-            {renderDimensionBlock(D5_META, govInputs.d5, (val) => onGovChange('d5', val))}
-          </>
+        {isProject ? (
+          activePart === 'gov' ? (
+            <>
+              {renderDimensionBlock(PROJECT_D1, projectScores.d1, (v) => onProjectScoreChange('d1', v))}
+              {renderDimensionBlock(PROJECT_D2, projectScores.d2, (v) => onProjectScoreChange('d2', v))}
+              {renderDimensionBlock(PROJECT_D3, projectScores.d3, (v) => onProjectScoreChange('d3', v))}
+              {renderDimensionBlock(PROJECT_D4, projectScores.d4, (v) => onProjectScoreChange('d4', v))}
+              {renderDimensionBlock(PROJECT_D5, projectScores.d5, (v) => onProjectScoreChange('d5', v))}
+            </>
+          ) : (
+            <>
+              {renderDimensionBlock(PROJECT_O1, projectScores.o1, (v) => onProjectScoreChange('o1', v))}
+              {renderDimensionBlock(PROJECT_O2, projectScores.o2, (v) => onProjectScoreChange('o2', v))}
+              {renderDimensionBlock(PROJECT_O3, projectScores.o3, (v) => onProjectScoreChange('o3', v))}
+              {renderDimensionBlock(PROJECT_O4, projectScores.o4, (v) => onProjectScoreChange('o4', v))}
+              {renderDimensionBlock(PROJECT_O5, projectScores.o5, (v) => onProjectScoreChange('o5', v))}
+            </>
+          )
         ) : (
-          <>
-            {renderDimensionBlock(O1_META, delInputs.o1, (val) => onDelChange('o1', val))}
-            {renderDimensionBlock(O2_META, delInputs.o2, (val) => onDelChange('o2', val))}
-            {renderDimensionBlock(O3_META, delInputs.o3, (val) => onDelChange('o3', val))}
-            {renderDimensionBlock(O4_META, delInputs.o4, (val) => onDelChange('o4', val))}
-            {renderDimensionBlock(O5_META, delInputs.o5, (val) => onDelChange('o5', val))}
-          </>
+          activePart === 'gov' ? (
+            <>
+              {renderDimensionBlock(PRODUCT_G1, productScores.g1, (v) => onProductScoreChange('g1', v))}
+              {renderDimensionBlock(PRODUCT_G2, productScores.g2, (v) => onProductScoreChange('g2', v))}
+              {renderDimensionBlock(PRODUCT_G3, productScores.g3, (v) => onProductScoreChange('g3', v))}
+              {renderDimensionBlock(PRODUCT_G4, productScores.g4, (v) => onProductScoreChange('g4', v))}
+              {renderDimensionBlock(PRODUCT_G5, productScores.g5, (v) => onProductScoreChange('g5', v))}
+            </>
+          ) : (
+            <>
+              {renderDimensionBlock(PRODUCT_P1, productScores.p1, (v) => onProductScoreChange('p1', v))}
+              {renderDimensionBlock(PRODUCT_P2, productScores.p2, (v) => onProductScoreChange('p2', v))}
+              {renderDimensionBlock(PRODUCT_P3, productScores.p3, (v) => onProductScoreChange('p3', v))}
+              {renderDimensionBlock(PRODUCT_P4, productScores.p4, (v) => onProductScoreChange('p4', v))}
+              {renderDimensionBlock(PRODUCT_P5, productScores.p5, (v) => onProductScoreChange('p5', v))}
+            </>
+          )
         )}
       </div>
     </div>
   );
 
   function renderDimensionBlock<T extends number>(
-    meta: DimensionMetadata<T>,
+    meta: DimensionDef<T>,
     currentVal: T,
     onChange: (val: T) => void
   ) {
@@ -147,10 +193,10 @@ export const DimensionSlider: React.FC<DimensionSliderProps> = ({
         </div>
 
         <p className="text-xs text-slate-400 mb-3.5">
-          <span className="text-slate-500 font-medium">Foundation:</span> {meta.theoreticalBasis}
+          <span className="text-slate-500 font-medium">Focus:</span> {meta.focusArea}
         </p>
 
-        {/* Radio-Pill 4-Anchor Cards */}
+        {/* 4 Clickable Radio-Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
           {meta.options.map((opt) => {
             const isSelected = currentVal === opt.value;

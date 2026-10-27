@@ -73,12 +73,12 @@ export default function RootLayout({
         <footer className="border-t border-[#1E293B] mt-16 py-8 text-xs text-slate-500 bg-[#080C14]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
-              <span className="text-slate-300 font-semibold">DeliveryPulse (DGRF Cockpit)</span> · Authored by <strong className="text-white">Ali Maleki (MBA, PMP)</strong> — Brno, Czech Republic.
+              <span className="text-slate-300 font-semibold">DeliveryPulse (DGRF Framework)</span> — Authored by <strong className="text-white">Ali Maleki</strong> (MBA, PMP) · Brno, Czech Republic.
             </div>
             <div className="flex items-center gap-3 text-slate-400 font-mono text-[11px]">
               <span>Next.js 15 App Router</span>
               <span>•</span>
-              <span>Cartesian 2x2 Matrix</span>
+              <span>Dual-Mode Cartesian 2x2</span>
               <span>•</span>
               <span>Tri-Agent Squad (Gemini)</span>
             </div>

@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateTriAgentBrief } from '@/lib/gemini';
-import { CockpitEvaluation } from '@/lib/engine/cockpit-engine';
+import { DualModeEvaluation } from '@/lib/engine/dual-mode-engine';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { evaluation, projectContext } = body as {
-      evaluation?: CockpitEvaluation;
+      evaluation?: DualModeEvaluation;
       projectContext?: { name?: string; industry?: string; budget?: string };
     };
 
-    if (!evaluation || !evaluation.gov || !evaluation.del || !evaluation.quadrant) {
+    if (!evaluation || !evaluation.quadrant) {
       return NextResponse.json(
-        { error: 'Valid DGRF cockpit evaluation payload is required for diagnostic brief generation.' },
+        { error: 'Valid DGRF dual-mode evaluation payload is required for diagnostic brief generation.' },
         { status: 400 }
       );
     }

@@ -2,89 +2,110 @@
 
 import React, { useState, useMemo } from 'react';
 import {
-  calculateCockpitDGRF,
-  CockpitGovInputs,
-  CockpitDelInputs,
-  CockpitPresetScenario,
-  COCKPIT_PRESETS,
-} from '@/lib/engine/cockpit-engine';
+  GovernanceMode,
+  ProjectScores,
+  ProductScores,
+  PROJECT_PHASES,
+  PRODUCT_PHASES,
+  calculateDualModeDGRF,
+  getDefaultProjectScores,
+  getDefaultProductScores,
+  DualModeEvaluation,
+} from '@/lib/engine/dual-mode-engine';
 import { TriAgentOutput } from '@/lib/gemini';
-import { ScenarioCards } from '@/components/cockpit/ScenarioCards';
 import { DimensionSlider } from '@/components/cockpit/DimensionSlider';
 import { RiskMatrix } from '@/components/matrix/RiskMatrix';
 import { RiskRadar } from '@/components/radar/RiskRadar';
 import { DiagnosticSummaryFooter } from '@/components/cockpit/DiagnosticSummaryFooter';
 import { TriAgentModal } from '@/components/cockpit/TriAgentModal';
 import {
+  Briefcase,
+  Boxes,
   Sparkles,
   RefreshCw,
-  FolderGit2,
-  ChevronDown,
   ShieldAlert,
-  BrainCircuit,
-  FileCheck2,
-  CheckCircle2,
+  Activity,
   AlertTriangle,
-  Info,
-  Layers,
+  Clock,
+  ArrowRight,
+  SlidersHorizontal,
+  ChevronRight,
+  Compass,
+  FileCheck2,
+  Zap,
 } from 'lucide-react';
 
-const ENTERPRISE_PROGRAMS = [
+const SUGGESTED_PROJECT_NAMES = [
   'Core Modernization Wave 1 (Cloud & Microservices)',
-  'Commercial Off-The-Shelf (COTS) ERP Migration',
-  'Global Real-Time Payments Gateway v3',
-  'Healthcare Regulatory Interoperability Platform',
+  'Enterprise SAP S/4HANA Global Migration',
+  'Real-Time Payment Gateway & Clearing Engine',
+  'Healthcare Interoperability Data Lakehouse',
+];
+
+const SUGGESTED_PRODUCT_NAMES = [
+  'PulseAI Enterprise Copilot & Insights Engine',
+  'Multi-Tenant SaaS B2B Self-Serve Portal',
+  'Embedded FinTech Lending & Credit Ledger',
+  'Omnichannel Logistics Dispatch Platform',
 ];
 
 export default function DiagnosticCockpitPage() {
-  const [selectedProgram, setSelectedProgram] = useState(ENTERPRISE_PROGRAMS[0]);
-  const [customProgramName, setCustomProgramName] = useState('');
-  const [activeScenarioId, setActiveScenarioId] = useState<string>('case-a-bi');
-  const [activeTab, setActiveTab] = useState<'gov' | 'del'>('gov');
+  // Step 1: Mode Selection
+  const [mode, setMode] = useState<GovernanceMode>('project');
 
-  // Tri-Agent AI Modal State
+  // Step 2: Phase Selection
+  const [projectPhase, setProjectPhase] = useState<string>('execution');
+  const [productPhase, setProductPhase] = useState<string>('scale');
+
+  // Step 3: Questionnaires State
+  const [activePart, setActivePart] = useState<'gov' | 'del'>('gov');
+  const [projectScores, setProjectScores] = useState<ProjectScores>(getDefaultProjectScores());
+  const [productScores, setProductScores] = useState<ProductScores>(getDefaultProductScores());
+
+  // Program/Initiative Name
+  const [customInitiativeName, setCustomInitiativeName] = useState<string>('');
+
+  // AI Tri-Agent Modal State
   const [isTriAgentModalOpen, setIsTriAgentModalOpen] = useState(false);
   const [triAgentBrief, setTriAgentBrief] = useState<TriAgentOutput | null>(null);
   const [isLoadingBrief, setIsLoadingBrief] = useState(false);
 
-  // Initial State seeded from first preset (Case A)
-  const [govInputs, setGovInputs] = useState<CockpitGovInputs>(COCKPIT_PRESETS[0].gov);
-  const [delInputs, setDelInputs] = useState<CockpitDelInputs>(COCKPIT_PRESETS[0].del);
+  const activePhase = mode === 'project' ? projectPhase : productPhase;
+  const activePhases = mode === 'project' ? PROJECT_PHASES : PRODUCT_PHASES;
 
-  // Real-time pure evaluation calculation
-  const evaluation = useMemo(() => {
-    return calculateCockpitDGRF(govInputs, delInputs);
-  }, [govInputs, delInputs]);
+  const activeInitiativeTitle = useMemo(() => {
+    if (customInitiativeName.trim()) return customInitiativeName.trim();
+    return mode === 'project'
+      ? SUGGESTED_PROJECT_NAMES[0]
+      : SUGGESTED_PRODUCT_NAMES[0];
+  }, [customInitiativeName, mode]);
 
-  const activeProjectTitle = customProgramName.trim() || selectedProgram;
+  // Real-time evaluation
+  const evaluation: DualModeEvaluation = useMemo(() => {
+    return calculateDualModeDGRF(mode, activePhase, projectScores, productScores);
+  }, [mode, activePhase, projectScores, productScores]);
 
-  // Handle preset scenario selection
-  const handleSelectScenario = (scenario: CockpitPresetScenario) => {
-    setActiveScenarioId(scenario.id);
-    setGovInputs({ ...scenario.gov });
-    setDelInputs({ ...scenario.del });
-  };
-
-  // Handle individual anchor adjustments
-  const handleGovChange = (key: keyof CockpitGovInputs, val: any) => {
-    setActiveScenarioId('custom');
-    setGovInputs((prev) => ({
+  // Handlers for score changes
+  const handleProjectScoreChange = (key: keyof ProjectScores, val: any) => {
+    setProjectScores((prev) => ({
       ...prev,
       [key]: val,
     }));
   };
 
-  const handleDelChange = (key: keyof CockpitDelInputs, val: any) => {
-    setActiveScenarioId('custom');
-    setDelInputs((prev) => ({
+  const handleProductScoreChange = (key: keyof ProductScores, val: any) => {
+    setProductScores((prev) => ({
       ...prev,
       [key]: val,
     }));
   };
 
-  const handleResetToBenchmark = () => {
-    const benchmark = COCKPIT_PRESETS.find((s) => s.id === 'case-d-resilient') || COCKPIT_PRESETS[3];
-    handleSelectScenario(benchmark);
+  const handleResetScores = () => {
+    if (mode === 'project') {
+      setProjectScores(getDefaultProjectScores());
+    } else {
+      setProductScores(getDefaultProductScores());
+    }
   };
 
   // Generate Tri-Agent Squad AI Clinical Brief
@@ -97,157 +118,373 @@ export default function DiagnosticCockpitPage() {
         body: JSON.stringify({
           evaluation,
           projectContext: {
-            name: activeProjectTitle,
-            industry: 'Global Enterprise IT',
-            budget: '$15M+',
+            name: activeInitiativeTitle,
+            industry: mode === 'project' ? 'Enterprise IT & Cloud' : 'B2B SaaS / Product',
+            budget: mode === 'project' ? '$24.5M Capital IT' : '$4.2M Annual Run-Rate',
           },
         }),
       });
 
       if (!res.ok) {
-        throw new Error(`Failed to generate brief (status ${res.status})`);
+        throw new Error(`Failed to generate brief: ${res.statusText}`);
       }
 
       const data = await res.json();
-      if (data.brief) {
-        setTriAgentBrief(data.brief);
-        setIsTriAgentModalOpen(true);
-      }
+      setTriAgentBrief(data.brief);
+      setIsTriAgentModalOpen(true);
     } catch (err) {
-      console.error('Error contacting Tri-Agent API route:', err);
+      console.error('Error generating AI clinical brief:', err);
     } finally {
       setIsLoadingBrief(false);
     }
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn pb-16">
-      {/* Top Banner: Context & Program Switcher */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-[#1E293B]">
-        <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="px-2.5 py-0.5 rounded text-[11px] font-mono font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
-              Interactive DGRF Cockpit
-            </span>
-            <span className="text-slate-600">·</span>
-            <span className="text-slate-400 text-xs font-mono">
-              Ali Maleki Mathematical Model
-            </span>
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Delivery & Governance Risk Diagnostic Plane
-          </h1>
-          <p className="text-sm text-slate-400 mt-1 max-w-3xl leading-relaxed">
-            Decoupling Structural Governance (<code className="text-amber-400 font-mono">PrjGov</code>) from Operational Delivery (<code className="text-sky-400 font-mono">PrjDel</code>) to mathematically isolate root-cause failure vectors and calculate nonlinear interaction penalties.
-          </p>
-        </div>
-
-        {/* Enterprise Program Switcher Dropdown & Reset */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
-          <div className="flex flex-col text-xs">
-            <label className="text-slate-400 text-[11px] font-semibold mb-1 flex items-center gap-1.5">
-              <FolderGit2 className="w-3.5 h-3.5 text-emerald-400" />
-              Active Enterprise Program:
-            </label>
-            <div className="relative">
-              <select
-                value={selectedProgram}
-                onChange={(e) => {
-                  setSelectedProgram(e.target.value);
-                  setCustomProgramName('');
-                }}
-                className="w-72 appearance-none px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-200 text-xs font-medium focus:outline-none focus:border-indigo-500 pr-8 transition-colors cursor-pointer"
-              >
-                {ENTERPRISE_PROGRAMS.map((prog) => (
-                  <option key={prog} value={prog}>
-                    {prog}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-slate-500 absolute right-2.5 top-2.5 pointer-events-none" />
+    <div className="space-y-8 pb-32">
+      {/* Cockpit Executive Action Bar */}
+      <section className="rounded-2xl border border-slate-800/90 bg-slate-900/80 p-5 shadow-xl backdrop-blur-md">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-sky-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 border border-indigo-400/30 shrink-0">
+              <Compass className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-bold tracking-tight text-white">
+                  DGRF Diagnostic Cockpit
+                </h1>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-500/15 border border-indigo-500/30 text-indigo-400">
+                  Dual-Mode 4-Step Engine
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">
+                Empirical Governance & Delivery Decoupling Architecture
+              </p>
             </div>
           </div>
 
-          <button
-            onClick={handleResetToBenchmark}
-            title="Reset to Case D: Resilient Benchmark (Q3)"
-            className="sm:mt-5 p-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-emerald-400 border border-slate-800 transition-colors flex items-center gap-1.5 text-xs font-medium"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span className="sm:hidden">Reset to Benchmark</span>
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleResetScores}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-800 bg-slate-950/70 hover:bg-slate-800 text-xs font-medium text-slate-300 transition-colors"
+              title="Reset scores to baseline defaults"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Reset Inputs
+            </button>
+            <button
+              onClick={handleGenerateTriAgentBrief}
+              disabled={isLoadingBrief}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-600 hover:from-indigo-500 hover:to-sky-500 text-white font-medium text-xs shadow-lg shadow-indigo-500/25 transition-all disabled:opacity-50"
+            >
+              <Sparkles className="h-4 w-4" />
+              {isLoadingBrief ? 'Consulting Tri-Agent Squad...' : 'Generate AI Clinical Brief'}
+            </button>
+          </div>
         </div>
-      </div>
-
-      {/* Preset Scenarios: One-Click Archetypes */}
-      <section>
-        <ScenarioCards
-          activeScenarioId={activeScenarioId}
-          onSelectScenario={handleSelectScenario}
-        />
       </section>
+        {/* Initiative Name Input & Overview Bar */}
+        <section className="rounded-2xl border border-slate-800/80 bg-slate-900/60 p-4 sm:p-5 backdrop-blur-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex-1">
+              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                Active Assessment Target / Initiative Name
+              </label>
+              <input
+                type="text"
+                value={customInitiativeName}
+                onChange={(e) => setCustomInitiativeName(e.target.value)}
+                placeholder={mode === 'project' ? SUGGESTED_PROJECT_NAMES[0] : SUGGESTED_PRODUCT_NAMES[0]}
+                className="w-full bg-slate-950/80 border border-slate-800 rounded-lg px-3.5 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40"
+              />
+            </div>
+            <div className="flex items-center gap-2 text-xs text-slate-400 self-end md:self-center">
+              <span className="font-mono text-slate-500">Benchmark Mode:</span>
+              <span className="px-2 py-1 rounded bg-slate-800/70 text-slate-300 font-medium">
+                {mode === 'project' ? 'PMWJ Oct 2026 Canonical' : 'PrdModule Horizon Standard'}
+              </span>
+            </div>
+          </div>
+        </section>
 
-      {/* Visual Diagnostic Twin: 2x2 Matrix & 10-Axis Live Radar */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RiskMatrix evaluation={evaluation} />
-        <RiskRadar evaluation={evaluation} />
-      </section>
-
-      {/* Dimension Anchor Controls (D1..D5 and O1..O5) */}
-      <section>
-        <DimensionSlider
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          govInputs={govInputs}
-          delInputs={delInputs}
-          onGovChange={handleGovChange}
-          onDelChange={handleDelChange}
-        />
-      </section>
-
-      {/* Tri-Agent Squad Consultation Banner Card */}
-      <section className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-indigo-950/40 border border-slate-800 shadow-2xl backdrop-blur-xl flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="space-y-1.5 max-w-2xl">
+        {/* STEP 1: Governance Mode Selection */}
+        <section className="space-y-3">
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 uppercase">
-              Tri-Agent Squad Advisory
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500/20 text-xs font-bold font-mono text-indigo-400 border border-indigo-500/30">
+              1
             </span>
-            <span className="text-slate-500 text-xs font-mono">· Gemini 2.5 Flash</span>
+            <h2 className="text-base font-semibold text-slate-100">Step 1: Governance Mode Selection</h2>
+            <span className="text-xs text-slate-400">— Choose operational context</span>
           </div>
 
-          <h3 className="text-lg font-bold text-white">
-            Need an Executive Board-Ready Clinical Report?
-          </h3>
-          <p className="text-xs text-slate-300 leading-relaxed">
-            Run our multi-agent diagnostic pipeline: <strong className="text-rose-400">Agent 1 (Triage Lead)</strong> diagnoses governance traps, <strong className="text-amber-400">Agent 2 (Actuary)</strong> calculates capital exposure and nonlinear penalties, and <strong className="text-emerald-400">Agent 3 (Recovery Architect)</strong> drafts a prioritized 72-hour reset mandate with 30-60-90 day intervention blueprints.
-          </p>
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Enterprise Project Mode Card */}
+            <div
+              onClick={() => setMode('project')}
+              className={`cursor-pointer rounded-2xl p-5 border transition-all text-left relative overflow-hidden ${
+                mode === 'project'
+                  ? 'border-indigo-500/80 bg-indigo-950/20 shadow-lg shadow-indigo-500/10 ring-1 ring-indigo-500/40'
+                  : 'border-slate-800 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-900/60'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors ${
+                      mode === 'project'
+                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                        : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    <Briefcase className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Enterprise Project Mode (DGRF-Project)</h3>
+                    <p className="text-xs text-slate-400">Fixed-Scope, Capital IT, COTS & Systems Integration</p>
+                  </div>
+                </div>
+                {mode === 'project' && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-indigo-500/20 text-indigo-300 border border-indigo-500/40">
+                    ACTIVE
+                  </span>
+                )}
+              </div>
 
-        <button
-          onClick={handleGenerateTriAgentBrief}
-          disabled={isLoadingBrief}
-          className="shrink-0 inline-flex items-center gap-2.5 px-5 py-3 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 via-indigo-500 to-emerald-500 hover:from-indigo-500 hover:to-emerald-400 text-white shadow-xl shadow-indigo-950/80 transition-all active:scale-[0.98] disabled:opacity-50"
-        >
-          <BrainCircuit className="w-4 h-4 text-amber-300" />
-          <span>Launch Tri-Agent Diagnostic Squad</span>
-        </button>
-      </section>
+              <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-1.5 text-xs text-slate-400">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Target:</span>
+                  <span className="text-slate-300 font-medium">ERP, Core Banking, Data Warehouses, Infrastructure</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Dual Axes:</span>
+                  <span className="text-slate-300 font-mono">Structural Gov (PrjGov) vs. Operational Del (PrjDel)</span>
+                </div>
+              </div>
+            </div>
 
-      {/* Real-Time Diagnostic Summary Footer */}
-      <DiagnosticSummaryFooter
-        evaluation={evaluation}
-        onOpenTriAgentModal={handleGenerateTriAgentBrief}
-        isLoadingBrief={isLoadingBrief}
-      />
+            {/* Digital Product Mode Card */}
+            <div
+              onClick={() => setMode('product')}
+              className={`cursor-pointer rounded-2xl p-5 border transition-all text-left relative overflow-hidden ${
+                mode === 'product'
+                  ? 'border-sky-500/80 bg-sky-950/20 shadow-lg shadow-sky-500/10 ring-1 ring-sky-500/40'
+                  : 'border-slate-800 bg-slate-900/40 hover:border-slate-700 hover:bg-slate-900/60'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors ${
+                      mode === 'product'
+                        ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30'
+                        : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    <Boxes className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white">Digital Product Mode (DGRF-Product / PrdModule)</h3>
+                    <p className="text-xs text-slate-400">Outcome-Driven SaaS, Digital Platforms & Continuous Discovery</p>
+                  </div>
+                </div>
+                {mode === 'product' && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-sky-500/20 text-sky-300 border border-sky-500/40">
+                    ACTIVE
+                  </span>
+                )}
+              </div>
 
-      {/* Tri-Agent Advisory Brief Modal */}
+              <div className="mt-4 pt-3 border-t border-slate-800/80 space-y-1.5 text-xs text-slate-400">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Target:</span>
+                  <span className="text-slate-300 font-medium">B2B/B2C SaaS, Internal Developer Portals, Mobile Apps</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Dual Axes:</span>
+                  <span className="text-slate-300 font-mono">Strategic Gov (PrdGov) vs. Operational Flow (PrdDel)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* STEP 2: Lifecycle Phase Selector */}
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500/20 text-xs font-bold font-mono text-indigo-400 border border-indigo-500/30">
+              2
+            </span>
+            <h2 className="text-base font-semibold text-slate-100">Step 2: Lifecycle Phase Calibration</h2>
+            <span className="text-xs text-slate-400">— Contextual sensitivity gate</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {activePhases.map((phase) => {
+              const isSelected = activePhase === phase.id;
+              return (
+                <div
+                  key={phase.id}
+                  onClick={() => {
+                    if (mode === 'project') setProjectPhase(phase.id);
+                    else setProductPhase(phase.id);
+                  }}
+                  className={`cursor-pointer rounded-xl p-4 border transition-all text-left flex flex-col justify-between ${
+                    isSelected
+                      ? mode === 'project'
+                        ? 'border-indigo-500 bg-indigo-950/30 shadow-md ring-1 ring-indigo-500/40'
+                        : 'border-sky-500 bg-sky-950/30 shadow-md ring-1 ring-sky-500/40'
+                      : 'border-slate-800/80 bg-slate-900/50 hover:border-slate-700 hover:bg-slate-800/40'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                        {phase.subtitle}
+                      </span>
+                      {isSelected && (
+                        <span className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" />
+                      )}
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-100 leading-snug">{phase.name}</h4>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-slate-800/60">
+                    <p className="text-[11px] text-slate-400 leading-normal line-clamp-2">
+                      <strong className="text-slate-300">Focus:</strong> {phase.focus}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* STEP 3: Two-Part Interactive Questionnaires */}
+        <section className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500/20 text-xs font-bold font-mono text-indigo-400 border border-indigo-500/30">
+                3
+              </span>
+              <h2 className="text-base font-semibold text-slate-100">Step 3: Two-Part Diagnostic Questionnaire</h2>
+              <span className="text-xs text-slate-400">— 10 discrete weighted dimensions</span>
+            </div>
+
+            {/* Quick stats / tab toggles */}
+            <div className="flex items-center gap-2 text-xs font-mono">
+              <span className="text-slate-400">Current Raw Gov:</span>
+              <span className="px-2 py-0.5 rounded bg-amber-500/10 text-amber-300 border border-amber-500/20 font-bold">
+                {evaluation.totalGov}/100
+              </span>
+              <span className="text-slate-500">|</span>
+              <span className="text-slate-400">Current Raw Del:</span>
+              <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20 font-bold">
+                {evaluation.totalDel}/100
+              </span>
+            </div>
+          </div>
+
+          {/* Dimension Slider with 4 radio cards per question & Part 1 / Part 2 tabs */}
+          <DimensionSlider
+            mode={mode}
+            activePart={activePart}
+            onPartChange={setActivePart}
+            projectScores={projectScores}
+            productScores={productScores}
+            onProjectScoreChange={handleProjectScoreChange}
+            onProductScoreChange={handleProductScoreChange}
+            penaltyActive={evaluation.penaltyActive}
+            penaltyMessage={evaluation.penaltyMessage}
+          />
+        </section>
+
+        {/* STEP 4: Real-Time Diagnostic Outputs */}
+        <section className="space-y-4 pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500/20 text-xs font-bold font-mono text-indigo-400 border border-indigo-500/30">
+                4
+              </span>
+              <h2 className="text-base font-semibold text-slate-100">Step 4: Real-Time Diagnostic Outputs</h2>
+              <span className="text-xs text-slate-400">— Mathematical coordinate & radar projection</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${evaluation.quadrant.badgeClass}`}>
+                {evaluation.quadrant.id}: {evaluation.quadrant.name}
+              </span>
+            </div>
+          </div>
+
+          {/* Grid Layout: 2x2 Matrix & Radar + Directives */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+            {/* Left: 2x2 Matrix */}
+            <div className="h-full">
+              <RiskMatrix evaluation={evaluation} />
+            </div>
+
+            {/* Right: 10-Axis Live Radar & Score Breakdown */}
+            <div className="h-full flex flex-col justify-between space-y-6">
+              <RiskRadar evaluation={evaluation} />
+
+              {/* 72-Hour Reset Directive Card */}
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 shadow-xl backdrop-blur-sm">
+                <div className="flex items-center gap-2.5 mb-3 text-amber-400">
+                  <Clock className="h-5 w-5" />
+                  <h3 className="text-sm font-bold tracking-tight text-white">
+                    {evaluation.immediate72HourReset.title}
+                  </h3>
+                </div>
+                <div className="space-y-3 text-xs">
+                  <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80">
+                    <span className="text-[10px] font-mono uppercase text-slate-400 block mb-1">
+                      Immediate Mandate / Triage Action
+                    </span>
+                    <p className="text-slate-200 font-medium leading-relaxed">
+                      {evaluation.immediate72HourReset.action}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-950/70 border border-slate-800/80">
+                    <span className="text-[10px] font-mono uppercase text-slate-400 block mb-1">
+                      Enforceable Deliverable (72h Horizon)
+                    </span>
+                    <p className="text-slate-300 font-mono text-[11px] leading-relaxed">
+                      {evaluation.immediate72HourReset.deliverable}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                  <span className="text-xs text-slate-400">
+                    Diagnostic Confidence: <strong className="text-emerald-400 font-mono">Deterministic (100%)</strong>
+                  </span>
+                  <button
+                    onClick={handleGenerateTriAgentBrief}
+                    disabled={isLoadingBrief}
+                    className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 font-medium transition-colors"
+                  >
+                    Deep AI Advisory Squad
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Diagnostic Footer with Score Readouts & Modal Launch */}
+        <DiagnosticSummaryFooter
+          evaluation={evaluation}
+          onOpenTriAgentModal={handleGenerateTriAgentBrief}
+          isLoadingBrief={isLoadingBrief}
+        />
+
+      {/* Tri-Agent Squad AI Clinical Brief Modal */}
       <TriAgentModal
         isOpen={isTriAgentModalOpen}
         onClose={() => setIsTriAgentModalOpen(false)}
         brief={triAgentBrief}
         evaluation={evaluation}
-        projectName={activeProjectTitle}
+        projectName={activeInitiativeTitle}
       />
     </div>
   );

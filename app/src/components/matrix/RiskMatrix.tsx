@@ -1,29 +1,45 @@
 'use client';
 
 import React from 'react';
-import { CockpitEvaluation } from '@/lib/engine/cockpit-engine';
-import { ShieldAlert, AlertCircle, Compass } from 'lucide-react';
+import { DualModeEvaluation } from '@/lib/engine/dual-mode-engine';
 
 interface RiskMatrixProps {
-  evaluation: CockpitEvaluation;
+  evaluation: DualModeEvaluation;
 }
 
 export const RiskMatrix: React.FC<RiskMatrixProps> = ({ evaluation }) => {
-  const { gov, del, quadrant, inBufferZone, hasGovPenalty } = evaluation;
+  const { mode, totalGov, totalDel, quadrant, bufferZone, penaltyActive } = evaluation;
 
   // Clamped coordinates between 0 and 100
-  const x = Math.max(0, Math.min(100, del.totalScore));
-  const y = Math.max(0, Math.min(100, gov.totalScore));
+  const x = Math.max(0, Math.min(100, totalDel));
+  const y = Math.max(0, Math.min(100, totalGov));
 
   // In SVG coordinates, Y=0 is at top, Y=100 is at bottom.
   // We want Gov=100 at top, Gov=0 at bottom, so SVG Y = 100 - y.
-  // Delivery=0 at left, Delivery=100 at right, so SVG X = x.
+  // Del=0 at left, Del=100 at right, so SVG X = x.
   const svgX = x;
   const svgY = 100 - y;
 
+  const isProject = mode === 'project';
+
+  // Dynamic quadrant labels per mode
+  const qLabels = isProject
+    ? {
+        q1: { title: 'Q1 · Systemic Fragility', subtitle: 'Critical Multi-Vector Failure' },
+        q2: { title: 'Q2 · Fragile Governance', subtitle: 'High Gov Risk / Low Del Risk' },
+        q3: { title: 'Q3 · Resilient Equilibrium', subtitle: 'Target Enterprise Benchmark' },
+        q4: { title: 'Q4 · Execution Constraint', subtitle: 'Sound Governance / Delivery Drag' },
+      }
+    : {
+        q1: { title: 'Q1 · Death Spiral', subtitle: 'Terminal Churn & HiPPO Roadmap' },
+        q2: { title: 'Q2 · Zombie Product', subtitle: 'Feature Factory Trap (Zero Traction)' },
+        q3: { title: 'Q3 · Product-Led Engine', subtitle: 'Autonomous Trios & Scalable Discovery' },
+        q4: { title: 'Q4 · Platform Bottleneck', subtitle: 'Validated Need / Architectural Drag' },
+      };
+
   return (
     <div className="relative rounded-2xl bg-slate-900/90 border border-slate-800 p-5 shadow-2xl backdrop-blur-xl flex flex-col justify-between">
-      {/* Header */}
+      {/* Matrix Header */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-800/80 mb-4">
         <div>
           <div className="flex items-center gap-2">
@@ -32,16 +48,16 @@ export const RiskMatrix: React.FC<RiskMatrixProps> = ({ evaluation }) => {
               style={{ backgroundColor: quadrant.hexColor }}
             />
             <h3 className="text-sm font-semibold tracking-wider uppercase text-slate-300">
-              DGRF 2x2 Diagnostic Matrix
+              {isProject ? 'DGRF-Project 2x2 Matrix' : 'DGRF-Product 2x2 Matrix'}
             </h3>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Cartesian Plane: Operational Delivery (X) vs Structural Governance (Y)
+          <p className="text-xs text-slate-500 mt-0.5 font-mono">
+            {evaluation.delAxisName} (X) vs {evaluation.govAxisName} (Y)
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {inBufferZone && (
+          {bufferZone.active && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 animate-pulse">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
               Buffer [40–60]
@@ -62,7 +78,7 @@ export const RiskMatrix: React.FC<RiskMatrixProps> = ({ evaluation }) => {
           <defs>
             {/* Grid pattern */}
             <pattern
-              id="matrix-subgrid"
+              id="dual-matrix-subgrid"
               width="10"
               height="10"
               patternUnits="userSpaceOnUse"
@@ -76,7 +92,7 @@ export const RiskMatrix: React.FC<RiskMatrixProps> = ({ evaluation }) => {
             </pattern>
 
             {/* Glowing filter for target pin */}
-            <filter id="matrix-glow" x="-50%" y="-50%" width="200%" height="200%">
+            <filter id="matrix-target-glow" x="-50%" y="-50%" width="200%" height="200%">
               <feGaussianBlur stdDeviation="3" result="blur" />
               <feMerge>
                 <feMergeNode in="blur" />
@@ -86,7 +102,7 @@ export const RiskMatrix: React.FC<RiskMatrixProps> = ({ evaluation }) => {
 
             {/* Buffer zone stripes */}
             <pattern
-              id="buffer-pattern"
+              id="dual-buffer-stripes"
               width="4"
               height="4"
               patternTransform="rotate(45 0 0)"
@@ -104,7 +120,7 @@ export const RiskMatrix: React.FC<RiskMatrixProps> = ({ evaluation }) => {
           </defs>
 
           {/* Background subgrid */}
-          <rect x="0" y="0" width="100" height="100" fill="url(#matrix-subgrid)" rx="4" />
+          <rect x="0" y="0" width="100" height="100" fill="url(#dual-matrix-subgrid)" rx="4" />
 
           {/* Quadrant Tinting */}
           {/* Q2: Top-Left (Gov > 50, Del <= 50) */}
@@ -118,7 +134,7 @@ export const RiskMatrix: React.FC<RiskMatrixProps> = ({ evaluation }) => {
 
           {/* 40-60 Buffer Zone Bands */}
           {/* Vertical Buffer (X 40 to 60) */}
-          <rect x="40" y="0" width="20" height="100" fill="url(#buffer-pattern)" />
+          <rect x="40" y="0" width="20" height="100" fill="url(#dual-buffer-stripes)" />
           <line
             x1="40"
             y1="0"
@@ -141,7 +157,7 @@ export const RiskMatrix: React.FC<RiskMatrixProps> = ({ evaluation }) => {
           />
 
           {/* Horizontal Buffer (SVG Y 40 to 60) */}
-          <rect x="0" y="40" width="100" height="20" fill="url(#buffer-pattern)" />
+          <rect x="0" y="40" width="100" height="20" fill="url(#dual-buffer-stripes)" />
           <line
             x1="0"
             y1="40"
@@ -198,34 +214,34 @@ export const RiskMatrix: React.FC<RiskMatrixProps> = ({ evaluation }) => {
           {/* Quadrant Labels */}
           {/* Q2 */}
           <g transform="translate(4, 8)">
-            <text className="fill-amber-400/90 font-bold text-[4.5px] uppercase tracking-wide">
-              Q2 · Fragile Governance
+            <text className="fill-amber-400/90 font-bold text-[4.3px] uppercase tracking-wide">
+              {qLabels.q2.title}
             </text>
-            <text className="fill-slate-500 text-[3px]">High Gov Risk / Low Del Risk</text>
+            <text className="fill-slate-500 text-[2.8px]">{qLabels.q2.subtitle}</text>
           </g>
 
           {/* Q1 */}
           <g transform="translate(54, 8)">
-            <text className="fill-rose-400/90 font-bold text-[4.5px] uppercase tracking-wide">
-              Q1 · Systemic Fragility
+            <text className="fill-rose-400/90 font-bold text-[4.3px] uppercase tracking-wide">
+              {qLabels.q1.title}
             </text>
-            <text className="fill-slate-500 text-[3px]">Critical Multi-Vector Failure</text>
+            <text className="fill-slate-500 text-[2.8px]">{qLabels.q1.subtitle}</text>
           </g>
 
           {/* Q3 */}
           <g transform="translate(4, 92)">
-            <text className="fill-emerald-400/90 font-bold text-[4.5px] uppercase tracking-wide">
-              Q3 · Resilient Equilibrium
+            <text className="fill-emerald-400/90 font-bold text-[4.3px] uppercase tracking-wide">
+              {qLabels.q3.title}
             </text>
-            <text className="fill-slate-500 text-[3px]">Target Enterprise Benchmark</text>
+            <text className="fill-slate-500 text-[2.8px]">{qLabels.q3.subtitle}</text>
           </g>
 
           {/* Q4 */}
           <g transform="translate(54, 92)">
-            <text className="fill-sky-400/90 font-bold text-[4.5px] uppercase tracking-wide">
-              Q4 · Execution Constraint
+            <text className="fill-sky-400/90 font-bold text-[4.3px] uppercase tracking-wide">
+              {qLabels.q4.title}
             </text>
-            <text className="fill-slate-500 text-[3px]">Sound Governance / Delivery Drag</text>
+            <text className="fill-slate-500 text-[2.8px]">{qLabels.q4.subtitle}</text>
           </g>
 
           {/* Threshold markers */}
@@ -236,8 +252,7 @@ export const RiskMatrix: React.FC<RiskMatrixProps> = ({ evaluation }) => {
             θ=50
           </text>
 
-          {/* Pulsing Target Dot & Crosshairs */}
-          {/* Outer expanding ping halo */}
+          {/* Pulsing Target Dot & Guidelines */}
           <circle
             cx={svgX}
             cy={svgY}
@@ -248,17 +263,15 @@ export const RiskMatrix: React.FC<RiskMatrixProps> = ({ evaluation }) => {
             style={{ transformOrigin: `${svgX}px ${svgY}px`, animationDuration: '2.5s' }}
           />
 
-          {/* Middle glow circle */}
           <circle
             cx={svgX}
             cy={svgY}
             r="4.5"
             fill={quadrant.hexColor}
             fillOpacity="0.4"
-            filter="url(#matrix-glow)"
+            filter="url(#matrix-target-glow)"
           />
 
-          {/* Crosshair guidelines */}
           <line
             x1={svgX}
             y1={svgY - 3}
@@ -319,9 +332,11 @@ export const RiskMatrix: React.FC<RiskMatrixProps> = ({ evaluation }) => {
             top: `${100 - y}%`,
           }}
         >
-          <span className="text-sky-400">Del: {del.totalScore}</span>
+          <span className="text-sky-400">
+            {isProject ? 'Del' : 'Traction'}: {totalDel}
+          </span>
           <span className="text-slate-600">·</span>
-          <span className="text-amber-400">Gov: {gov.totalScore}</span>
+          <span className="text-amber-400">Gov: {totalGov}</span>
         </div>
       </div>
 
@@ -332,10 +347,15 @@ export const RiskMatrix: React.FC<RiskMatrixProps> = ({ evaluation }) => {
             X-Axis
           </span>
           <div>
-            <span className="text-slate-300 font-medium">Operational Delivery:</span>{' '}
-            <strong className="text-sky-400 font-mono">{del.totalScore}/100</strong>
+            <span className="text-slate-300 font-medium">{evaluation.delAxisName}:</span>{' '}
+            <strong className="text-sky-400 font-mono">{totalDel}/100</strong>
+            {evaluation.delPenalty > 0 && (
+              <span className="text-rose-400 font-semibold block text-[11px]">
+                (+{evaluation.delPenalty} Blind Leaky Bucket Penalty)
+              </span>
+            )}
             <span className="text-slate-500 block text-[11px]">
-              (O1 Schedule, O2 Budget Burn, O3 Defects, O4 Morale, O5 Truth)
+              {isProject ? '(O1 Schedule, O2 Burn, O3 Defects, O4 Morale, O5 Candor)' : '(P1 Retention, P2 Cycle Time, P3 LTV/CAC, P4 Telemetry, P5 Flow)'}
             </span>
           </div>
         </div>
@@ -345,15 +365,15 @@ export const RiskMatrix: React.FC<RiskMatrixProps> = ({ evaluation }) => {
             Y-Axis
           </span>
           <div>
-            <span className="text-slate-300 font-medium">Structural Governance:</span>{' '}
-            <strong className="text-amber-400 font-mono">{gov.totalScore}/100</strong>
-            {hasGovPenalty && (
+            <span className="text-slate-300 font-medium">{evaluation.govAxisName}:</span>{' '}
+            <strong className="text-amber-400 font-mono">{totalGov}/100</strong>
+            {evaluation.govPenalty > 0 && (
               <span className="text-rose-400 font-semibold block text-[11px]">
-                (+10 Nonlinear Penalty Applied)
+                (+{evaluation.govPenalty} Authority-Procurement Penalty)
               </span>
             )}
             <span className="text-slate-500 block text-[11px]">
-              (D1 Mandate, D2 Procurement, D3 Scope, D4 Reserve, D5 Coupling)
+              {isProject ? '(D1 Mandate, D2 Procurement, D3 Scope, D4 Reserve, D5 Architecture)' : '(G1 Vision, G2 Capital, G3 Autonomy, G4 Tech Debt, G5 Compliance)'}
             </span>
           </div>
         </div>

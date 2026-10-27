@@ -1,19 +1,17 @@
 'use client';
 
 import React from 'react';
-import { CockpitEvaluation } from '@/lib/engine/cockpit-engine';
+import { DualModeEvaluation } from '@/lib/engine/dual-mode-engine';
 import {
   ShieldAlert,
-  Activity,
   Sparkles,
-  AlertTriangle,
   ArrowRight,
   Loader2,
-  CheckCircle2,
+  Clock,
 } from 'lucide-react';
 
 interface DiagnosticSummaryFooterProps {
-  evaluation: CockpitEvaluation;
+  evaluation: DualModeEvaluation;
   onOpenTriAgentModal: () => void;
   isLoadingBrief?: boolean;
 }
@@ -23,10 +21,40 @@ export const DiagnosticSummaryFooter: React.FC<DiagnosticSummaryFooterProps> = (
   onOpenTriAgentModal,
   isLoadingBrief = false,
 }) => {
-  const { gov, del, quadrant, hasGovPenalty, inBufferZone } = evaluation;
+  const {
+    mode,
+    totalGov,
+    totalDel,
+    quadrant,
+    penaltyActive,
+    penaltyMessage,
+    bufferZone,
+    immediate72HourReset,
+  } = evaluation;
+
+  // Threshold color bands: Emerald <= 35, Amber 36–50, Red > 50
+  const getScoreBadge = (score: number, label: string) => {
+    let colorClass = 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30';
+    if (score > 50) {
+      colorClass = 'text-rose-400 bg-rose-500/10 border-rose-500/30';
+    } else if (score > 35) {
+      colorClass = 'text-amber-400 bg-amber-500/10 border-amber-500/30';
+    }
+
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="text-xs font-mono text-slate-400">{label}:</span>
+        <span className={`px-2 py-0.5 rounded text-xs font-bold font-mono border ${colorClass}`}>
+          {score}/100
+        </span>
+      </div>
+    );
+  };
+
+  const isProject = mode === 'project';
 
   return (
-    <div className="sticky bottom-0 z-30 w-full bg-slate-950/95 border-t border-slate-800 shadow-[0_-10px_30px_rgba(0,0,0,0.5)] backdrop-blur-xl transition-all">
+    <div className="sticky bottom-0 z-30 w-full bg-[#080C14]/95 border-t border-[#1E293B] shadow-[0_-10px_30px_rgba(0,0,0,0.6)] backdrop-blur-xl transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Left: Scores & Indicator */}
@@ -44,7 +72,7 @@ export const DiagnosticSummaryFooter: React.FC<DiagnosticSummaryFooterProps> = (
                 />
               </span>
               <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400">
-                Live State:
+                {isProject ? 'Project State:' : 'Product State:'}
               </span>
               <span
                 className={`px-2.5 py-0.5 rounded-full text-xs font-bold font-mono border ${quadrant.badgeClass}`}
@@ -53,33 +81,22 @@ export const DiagnosticSummaryFooter: React.FC<DiagnosticSummaryFooterProps> = (
               </span>
             </div>
 
-            {/* PrjGov Score */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-slate-400">PrjGov:</span>
-              <span className="text-base font-extrabold font-mono text-amber-400">
-                {gov.totalScore}
+            {/* Governance Score */}
+            {getScoreBadge(totalGov, isProject ? 'PrjGov' : 'PrdGov')}
+
+            {/* Delivery / Traction Score */}
+            {getScoreBadge(totalDel, isProject ? 'PrjDel' : 'PrdDel')}
+
+            {/* Penalty Trigger Alert Chip */}
+            {penaltyActive && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse">
+                <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                {isProject ? '+10 Penalty Active' : '+12 Blind Leaky Bucket'}
               </span>
-              <span className="text-[10px] text-slate-500 font-mono">/ 100</span>
+            )}
 
-              {hasGovPenalty && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse">
-                  <ShieldAlert className="w-3 h-3 text-rose-400" />
-                  +10 Penalty Active
-                </span>
-              )}
-            </div>
-
-            {/* PrjDel Score */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-slate-400">PrjDel:</span>
-              <span className="text-base font-extrabold font-mono text-sky-400">
-                {del.totalScore}
-              </span>
-              <span className="text-[10px] text-slate-500 font-mono">/ 100</span>
-            </div>
-
-            {/* Buffer Zone Flag */}
-            {inBufferZone && (
+            {/* Buffer Zone Status */}
+            {bufferZone.active && (
               <span className="hidden lg:inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono text-indigo-400 bg-indigo-500/10 border border-indigo-500/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
                 Buffer [40–60]
@@ -87,13 +104,14 @@ export const DiagnosticSummaryFooter: React.FC<DiagnosticSummaryFooterProps> = (
             )}
           </div>
 
-          {/* Center: Recommended Immediate Executive Action */}
+          {/* Center: Recommended Immediate 72h Reset Directive */}
           <div className="hidden xl:flex items-center gap-2 text-xs max-w-md">
-            <span className="text-slate-400 font-semibold shrink-0 uppercase tracking-wider text-[10px] bg-slate-900 border border-slate-800 px-2 py-0.5 rounded">
-              Action:
+            <span className="text-slate-400 font-semibold shrink-0 uppercase tracking-wider text-[10px] bg-slate-900 border border-slate-800 px-2 py-0.5 rounded flex items-center gap-1">
+              <Clock className="w-3 h-3 text-amber-400" />
+              72h Reset:
             </span>
             <span className="text-slate-200 truncate font-medium">
-              {quadrant.immediateAction}
+              {immediate72HourReset.action}
             </span>
           </div>
 
@@ -112,7 +130,7 @@ export const DiagnosticSummaryFooter: React.FC<DiagnosticSummaryFooterProps> = (
               ) : (
                 <>
                   <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-                  <span>Generate AI Clinical Brief (Tri-Agent)</span>
+                  <span>Generate AI Clinical Brief</span>
                   <ArrowRight className="w-3.5 h-3.5 text-slate-200" />
                 </>
               )}

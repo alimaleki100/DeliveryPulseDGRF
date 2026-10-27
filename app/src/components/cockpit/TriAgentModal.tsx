@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { TriAgentOutput } from '@/lib/gemini';
-import { CockpitEvaluation } from '@/lib/engine/cockpit-engine';
+import { DualModeEvaluation } from '@/lib/engine/dual-mode-engine';
 import {
   X,
   ShieldAlert,
@@ -15,7 +15,6 @@ import {
   AlertTriangle,
   Clock,
   Sparkles,
-  ExternalLink,
   ChevronRight,
   TrendingDown,
   Layers,
@@ -26,7 +25,7 @@ interface TriAgentModalProps {
   isOpen: boolean;
   onClose: () => void;
   brief: TriAgentOutput | null;
-  evaluation: CockpitEvaluation;
+  evaluation: DualModeEvaluation;
   projectName: string;
 }
 
@@ -43,19 +42,22 @@ export const TriAgentModal: React.FC<TriAgentModalProps> = ({
   if (!isOpen || !brief) return null;
 
   const { triageLead, actuary, recoveryArchitect, metadata } = brief;
+  const isProject = evaluation.mode === 'project';
 
   const generateMarkdownReport = (): string => {
     return `# DGRF Executive Clinical Brief — ${projectName}
+**Assessment Mode:** ${isProject ? 'Enterprise Project Mode (DGRF-Project)' : 'Digital Product Mode (DGRF-Product / PrdModule)'}
+**Lifecycle Phase:** ${evaluation.phaseName}
 **Evaluation Date:** ${new Date(metadata.generatedAt).toLocaleString()}
 **Diagnostic Quadrant:** ${evaluation.quadrant.id} (${evaluation.quadrant.name}) — Urgency: ${evaluation.quadrant.urgency}
-**Structural Governance (PrjGov):** ${evaluation.gov.totalScore}/100 (Raw: ${evaluation.gov.rawBase}, Penalty: ${evaluation.gov.penalty})
-**Operational Delivery (PrjDel):** ${evaluation.del.totalScore}/100 (Raw: ${evaluation.del.rawBase})
-**Buffer Zone Status:** ${evaluation.inBufferZone ? 'Active Metastability [40-60]' : 'Resolved'}
-**Framework Attribution:** Authored by Ali Maleki (MBA, PMP)
+**${evaluation.govAxisName}:** ${evaluation.totalGov}/100 (Raw: ${evaluation.rawGov}, Penalty: ${evaluation.govPenalty})
+**${evaluation.delAxisName}:** ${evaluation.totalDel}/100 (Raw: ${evaluation.rawDel}, Penalty: ${evaluation.delPenalty})
+**Buffer Zone Status:** ${evaluation.bufferZone.active ? 'Active Metastability [40-60]' : 'Resolved'}
+**Framework Attribution:** Delivery & Governance Risk Framework (DGRF) authored by Ali Maleki (MBA, PMP)
 
 ---
 
-## 1. AGENT 1: TRIAGE LEAD (Governance & Structural Diagnostics)
+## 1. AGENT 1: TRIAGE LEAD (${isProject ? 'Project Governance Diagnostics' : 'Product Strategy Diagnostics'})
 **Headline:** ${triageLead.headline}
 
 ### Diagnostic Summary
@@ -69,7 +71,7 @@ ${triageLead.rootCauseVectors
   )
   .join('\n')}
 
-### Active Governance Traps
+### Active Behavioral Traps
 ${triageLead.activeGovernanceTraps.map((t) => `* ${t}`).join('\n')}
 
 ---
@@ -81,7 +83,7 @@ ${triageLead.activeGovernanceTraps.map((t) => `* ${t}`).join('\n')}
 ### Capital Burn Velocity
 ${actuary.capitalBurnVelocity}
 
-### Contractual Misalignment
+### Contractual / Unit Economic Alignment
 ${actuary.contractualMisalignment}
 
 ### Interaction Penalty Analysis
@@ -134,7 +136,7 @@ ${recoveryArchitect.exitCriteria}
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `DGRF-Brief-${projectName.replace(/\s+/g, '-')}-${evaluation.quadrant.id}.md`;
+    link.download = `DGRF-${evaluation.mode.toUpperCase()}-Brief-${projectName.replace(/\s+/g, '-')}-${evaluation.quadrant.id}.md`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -160,9 +162,12 @@ ${recoveryArchitect.exitCriteria}
                 <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30">
                   {metadata.source === 'gemini-2.5-flash' ? 'Gemini 2.5 Flash' : 'Deterministic Engine'}
                 </span>
+                <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                  {isProject ? 'Project Mode' : 'Product Mode'}
+                </span>
               </div>
               <p className="text-[11px] text-slate-400">
-                {projectName} · Calibrated against DGRF Actuarial Matrices
+                {projectName} · Phase: {evaluation.phaseName}
               </p>
             </div>
           </div>
@@ -210,18 +215,23 @@ ${recoveryArchitect.exitCriteria}
         <div className="px-6 py-2.5 bg-slate-950/40 border-b border-slate-800/80 flex flex-wrap items-center justify-between text-xs font-mono">
           <div className="flex items-center gap-4">
             <span className="text-slate-400">
-              PrjGov:{' '}
-              <strong className="text-amber-400">{evaluation.gov.totalScore}/100</strong>
-              {evaluation.hasGovPenalty && (
+              {isProject ? 'PrjGov' : 'PrdGov'}:{' '}
+              <strong className="text-amber-400">{evaluation.totalGov}/100</strong>
+              {evaluation.govPenalty > 0 && (
                 <span className="ml-1 text-[10px] text-rose-400 bg-rose-500/10 px-1 rounded border border-rose-500/20">
-                  +10 Penalty
+                  +{evaluation.govPenalty} Penalty
                 </span>
               )}
             </span>
             <span className="text-slate-600">|</span>
             <span className="text-slate-400">
-              PrjDel:{' '}
-              <strong className="text-sky-400">{evaluation.del.totalScore}/100</strong>
+              {isProject ? 'PrjDel' : 'PrdDel'}:{' '}
+              <strong className="text-sky-400">{evaluation.totalDel}/100</strong>
+              {evaluation.delPenalty > 0 && (
+                <span className="ml-1 text-[10px] text-rose-400 bg-rose-500/10 px-1 rounded border border-rose-500/20">
+                  +{evaluation.delPenalty} Penalty
+                </span>
+              )}
             </span>
             <span className="text-slate-600">|</span>
             <span className="text-slate-400">
@@ -233,7 +243,7 @@ ${recoveryArchitect.exitCriteria}
           </div>
 
           <div className="text-[11px] text-slate-400 font-sans">
-            {evaluation.quadrant.immediateAction}
+            {evaluation.immediate72HourReset.action}
           </div>
         </div>
 
@@ -299,7 +309,7 @@ ${recoveryArchitect.exitCriteria}
               <div className="p-4 rounded-xl bg-slate-950/80 border border-rose-500/30">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[10px] font-mono uppercase font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">
-                    Governance & Structural Diagnostics
+                    {triageLead.agentTitle}
                   </span>
                 </div>
                 <h3 className="text-base font-bold text-white mb-2">
@@ -378,7 +388,7 @@ ${recoveryArchitect.exitCriteria}
               <div className="p-4 rounded-xl bg-slate-950/80 border border-amber-500/30">
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] font-mono uppercase font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                    Capital Velocity & Actuarial Risk Modeling
+                    {actuary.agentTitle}
                   </span>
                   <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/30">
                     RATING: {actuary.financialRiskRating}
@@ -401,11 +411,11 @@ ${recoveryArchitect.exitCriteria}
                   </p>
                 </div>
 
-                {/* Contractual Misalignment */}
+                {/* Contractual / Unit Economics */}
                 <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 mb-2 flex items-center gap-2">
                     <Layers className="w-4 h-4 text-amber-400" />
-                    Contractual Incentive Misalignment
+                    {isProject ? 'Contractual Alignment' : 'Unit Economic Traction'}
                   </h4>
                   <p className="text-xs text-slate-300 leading-relaxed">
                     {actuary.contractualMisalignment}
@@ -443,7 +453,7 @@ ${recoveryArchitect.exitCriteria}
               <div className="p-4 rounded-xl bg-slate-950/80 border border-emerald-500/30">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-[10px] font-mono uppercase font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    Intervention Engineering & Program Turnaround
+                    {recoveryArchitect.agentTitle}
                   </span>
                 </div>
                 <h3 className="text-base font-bold text-white mb-2">
@@ -565,10 +575,10 @@ ${recoveryArchitect.exitCriteria}
               <div className="p-5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 space-y-4 font-mono leading-relaxed">
                 <div className="pb-3 border-b border-slate-800 text-slate-400 font-sans">
                   <h3 className="text-sm font-bold text-white mb-1">
-                    Consolidated Tri-Agent Executive Memorandum
+                    Consolidated Tri-Agent Executive Memorandum ({isProject ? 'DGRF-Project' : 'DGRF-Product'})
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Synthesized for C-Suite Briefing & Board Audit Committee Review
+                    Synthesized for C-Suite Briefing & Board Audit Committee Review · Phase: {evaluation.phaseName}
                   </p>
                 </div>
 
@@ -598,7 +608,7 @@ ${recoveryArchitect.exitCriteria}
         {/* Modal Footer */}
         <div className="px-6 py-3.5 border-t border-slate-800 bg-slate-950/80 flex items-center justify-between text-xs text-slate-500">
           <div>
-            <span>DGRF Methodology by Ali Maleki (MBA, PMP) · Brno, Czech Republic</span>
+            <span>DeliveryPulse (DGRF Framework) — Authored by Ali Maleki (MBA, PMP)</span>
           </div>
 
           <button

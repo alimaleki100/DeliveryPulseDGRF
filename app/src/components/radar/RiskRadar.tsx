@@ -1,38 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CockpitEvaluation } from '@/lib/engine/cockpit-engine';
+import { DualModeEvaluation } from '@/lib/engine/dual-mode-engine';
 
 interface RiskRadarProps {
-  evaluation: CockpitEvaluation;
+  evaluation: DualModeEvaluation;
 }
 
 export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
   const [viewMode, setViewMode] = useState<'split' | 'unified'>('split');
 
-  const { gov, del } = evaluation;
+  const { mode, totalGov, totalDel, dimensionBreakdown } = evaluation;
 
-  // Normalized scores (0 to 100%) based on each dimension's max points
-  const govDimensions = [
-    { code: 'D1', name: 'Authority', val: gov.breakdown.d1, max: 25, norm: (gov.breakdown.d1 / 25) * 100 },
-    { code: 'D2', name: 'Procurement', val: gov.breakdown.d2, max: 20, norm: (gov.breakdown.d2 / 20) * 100 },
-    { code: 'D3', name: 'Scope CCB', val: gov.breakdown.d3, max: 20, norm: (gov.breakdown.d3 / 20) * 100 },
-    { code: 'D4', name: 'Contingency', val: gov.breakdown.d4, max: 20, norm: (gov.breakdown.d4 / 20) * 100 },
-    { code: 'D5', name: 'Architecture', val: gov.breakdown.d5, max: 15, norm: (gov.breakdown.d5 / 15) * 100 },
-  ];
-
-  const delDimensions = [
-    { code: 'O1', name: 'Schedule', val: del.breakdown.o1, max: 25, norm: (del.breakdown.o1 / 25) * 100 },
-    { code: 'O2', name: 'Budget Burn', val: del.breakdown.o2, max: 20, norm: (del.breakdown.o2 / 20) * 100 },
-    { code: 'O3', name: 'Defect Churn', val: del.breakdown.o3, max: 20, norm: (del.breakdown.o3 / 20) * 100 },
-    { code: 'O4', name: 'Turnover', val: del.breakdown.o4, max: 20, norm: (del.breakdown.o4 / 20) * 100 },
-    { code: 'O5', name: 'Alignment', val: del.breakdown.o5, max: 15, norm: (del.breakdown.o5 / 15) * 100 },
-  ];
-
-  const unifiedDimensions = [
-    ...govDimensions.map((d) => ({ ...d, type: 'gov' as const })),
-    ...delDimensions.map((d) => ({ ...d, type: 'del' as const })),
-  ];
+  const govDimensions = dimensionBreakdown.filter((d) => d.category === 'gov');
+  const delDimensions = dimensionBreakdown.filter((d) => d.category === 'del');
 
   const centerX = 100;
   const centerY = 100;
@@ -46,11 +27,11 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
     return { x, y };
   };
 
-  const getPolygonPath = (items: { norm: number }[]) => {
+  const getPolygonPath = (items: { normPercent: number }[]) => {
     return (
       items
         .map((item, idx) => {
-          const pt = getPoint(idx, items.length, Math.max(4, item.norm));
+          const pt = getPoint(idx, items.length, Math.max(4, item.normPercent));
           return `${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(2)} ${pt.y.toFixed(2)}`;
         })
         .join(' ') + ' Z'
@@ -58,26 +39,26 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
   };
 
   const unifiedPath =
-    unifiedDimensions
+    dimensionBreakdown
       .map((item, idx) => {
-        const pt = getPoint(idx, 10, Math.max(4, item.norm));
+        const pt = getPoint(idx, 10, Math.max(4, item.normPercent));
         return `${idx === 0 ? 'M' : 'L'} ${pt.x.toFixed(2)} ${pt.y.toFixed(2)}`;
       })
       .join(' ') + ' Z';
 
   return (
     <div className="relative rounded-2xl bg-slate-900/90 border border-slate-800 p-5 shadow-2xl backdrop-blur-xl flex flex-col justify-between">
-      {/* Header with Mode Toggle */}
+      {/* Radar Header with Mode Toggle */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-800/80 mb-3">
         <div>
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
             <h3 className="text-sm font-semibold tracking-wider uppercase text-slate-300">
-              10-Axis Live SVG Radar
+              10-Axis Live Normalized Radar
             </h3>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Normalized Dual Overlays: Amber (Governance) & Blue (Delivery)
+          <p className="text-xs text-slate-500 mt-0.5 font-mono">
+            Amber: {evaluation.govAxisName} · Blue: {evaluation.delAxisName}
           </p>
         </div>
 
@@ -109,14 +90,14 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
       <div className="relative aspect-square w-full max-w-[440px] mx-auto select-none my-auto">
         <svg viewBox="0 0 200 200" className="w-full h-full overflow-visible">
           <defs>
-            <radialGradient id="radar-glow-grad" cx="50%" cy="50%" r="50%">
+            <radialGradient id="dual-radar-glow-grad" cx="50%" cy="50%" r="50%">
               <stop offset="0%" stopColor="#6366f1" stopOpacity="0.1" />
               <stop offset="100%" stopColor="#080c14" stopOpacity="0" />
             </radialGradient>
           </defs>
 
           {/* Background circle glow */}
-          <circle cx={centerX} cy={centerY} r={radius} fill="url(#radar-glow-grad)" />
+          <circle cx={centerX} cy={centerY} r={radius} fill="url(#dual-radar-glow-grad)" />
 
           {/* Concentric Web Rings at 25%, 50%, 75%, 100% */}
           {[25, 50, 75, 100].map((level) => (
@@ -161,7 +142,7 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
                 );
               })}
 
-              {/* Structural Gov Polygon (Amber) */}
+              {/* Governance Polygon (Amber) */}
               <path
                 d={getPolygonPath(govDimensions)}
                 fill="rgba(245, 158, 11, 0.22)"
@@ -171,7 +152,7 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
                 className="transition-all duration-300"
               />
 
-              {/* Operational Del Polygon (Sky/Cyan) */}
+              {/* Delivery / Traction Polygon (Blue/Cyan) */}
               <path
                 d={getPolygonPath(delDimensions)}
                 fill="rgba(14, 165, 233, 0.22)"
@@ -183,7 +164,7 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
 
               {/* Gov Data points */}
               {govDimensions.map((d, idx) => {
-                const pt = getPoint(idx, 5, Math.max(4, d.norm));
+                const pt = getPoint(idx, 5, Math.max(4, d.normPercent));
                 return (
                   <circle
                     key={`gov-${idx}`}
@@ -200,7 +181,7 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
 
               {/* Del Data points */}
               {delDimensions.map((d, idx) => {
-                const pt = getPoint(idx, 5, Math.max(4, d.norm));
+                const pt = getPoint(idx, 5, Math.max(4, d.normPercent));
                 return (
                   <circle
                     key={`del-${idx}`}
@@ -235,7 +216,7 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
           ) : (
             /* Unified 10-spoke polygon */
             <>
-              {unifiedDimensions.map((d, idx) => {
+              {dimensionBreakdown.map((_, idx) => {
                 const pt = getPoint(idx, 10, 100);
                 return (
                   <line
@@ -260,9 +241,9 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
                 className="transition-all duration-300"
               />
 
-              {unifiedDimensions.map((d, idx) => {
-                const pt = getPoint(idx, 10, Math.max(4, d.norm));
-                const color = d.type === 'gov' ? '#F59E0B' : '#0EA5E9';
+              {dimensionBreakdown.map((d, idx) => {
+                const pt = getPoint(idx, 10, Math.max(4, d.normPercent));
+                const color = d.category === 'gov' ? '#F59E0B' : '#0EA5E9';
                 return (
                   <circle
                     key={idx}
@@ -277,7 +258,7 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
                 );
               })}
 
-              {unifiedDimensions.map((d, idx) => {
+              {dimensionBreakdown.map((d, idx) => {
                 const pt = getPoint(idx, 10, 117);
                 return (
                   <text
@@ -302,13 +283,13 @@ export const RiskRadar: React.FC<RiskRadarProps> = ({ evaluation }) => {
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-amber-500/80 border border-amber-400" />
           <span className="text-slate-300 font-medium font-mono">
-            Gov (D1–D5): {gov.totalScore}/100
+            {mode === 'project' ? 'PrjGov (D1–D5)' : 'PrdGov (G1–G5)'}: {totalGov}/100
           </span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-sky-400/80 border border-sky-300" />
           <span className="text-slate-300 font-medium font-mono">
-            Del (O1–O5): {del.totalScore}/100
+            {mode === 'project' ? 'PrjDel (O1–O5)' : 'PrdDel (P1–P5)'}: {totalDel}/100
           </span>
         </div>
       </div>
